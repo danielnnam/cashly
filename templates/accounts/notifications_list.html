@@ -1,0 +1,72 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Notifications - Cashly{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+{% block page_subtitle %}Stay updated with your recent alerts{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Notifications Card -->
+    <div class="bg-white rounded-xl border border-border shadow-sm">
+        <!-- Header -->
+        <div class="p-6 border-b border-border flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-dark">Recent Notifications</h2>
+        </div>
+
+        <div class="p-6">
+            {% if notifications %}
+            <ul class="divide-y divide-border max-h-[500px] overflow">
+                {% for notif in notifications %}
+                <li class="py-4 flex items-start justify-between hover:bg-gray-50 transition">
+                    
+                    <!-- Left -->
+                    <div class="flex items-start space-x-3">
+                        <!-- Icon -->
+                        <div class="w-10 h-10 flex items-center justify-center rounded-full
+                            {% if not notif.is_read %}
+                                bg-primary/10 text-primary
+                            {% else %}
+                                bg-gray-100 text-gray-400
+                            {% endif %}
+                        ">
+                            <i class="fas fa-bell"></i>
+                        </div>
+
+                        <!-- Texts -->
+                        <div>
+                            <p class="font-medium text-sm {% if not notif.is_read %}text-dark{% else %}text-secondary{% endif %}">
+                                {{ notif.title }}
+                            </p>
+                            <p class="text-sm text-secondary mt-1">{{ notif.message }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Right -->
+                    <div class="text-right">
+                        <p class="text-xs text-gray-400">{{ notif.created_at|date:"M d, Y h:i A" }}</p>
+                        {% if not notif.is_read %}
+                            <span class="inline-block mt-1 w-2 h-2 bg-green-500 rounded-full"></span>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-bell-slash text-3xl mb-3 text-gray-400"></i>
+                    <p class="text-secondary text-sm">No notifications yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Back -->
+    <div class="text-center pt-4">
+        <a href="{% url 'dashboard' %}" 
+           class="inline-flex items-center text-primary hover:text-primary/80 font-medium transition duration-200">
+            <i class="fas fa-arrow-left mr-1"></i>
+            Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

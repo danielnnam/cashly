@@ -1,0 +1,210 @@
+{% extends "dashboard/base.html" %}
+
+{% load humanize %}
+
+{% block title %}Withdrawal Requests - Cashly{% endblock %}
+{% block page_title %}Withdrawal Requests{% endblock %}
+{% block page_subtitle %}Reference: {{ withdrawal.reference }}{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- LEFT SIDE -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+            <div>
+                
+            </div>
+            <div id="countdown"
+                class="px-4 py-2 rounded-lg bg-green-50 text-green-700 text-base font-semibold shadow-sm transition">
+                {% if withdrawal.status == "expired" %}
+                    Expired
+                {% elif withdrawal.status == "completed" %}
+                    Completed
+                {% elif withdrawal.status == "paid" %}
+                    Awaiting Your Confirmation
+                {% elif withdrawal.status == "accepted" %}
+                    <span id="countdown-text">Calculating...</span>
+                {% else %}
+                    Awaiting Agent Payment
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Main Card -->
+        <div class="bg-white border border-border rounded-2xl shadow-md p-8 space-y-8">
+            <div class="space-y-2 text-center">
+                <h3 class="text-lg font-semibold text-dark">Withdrawal In Progress</h3>
+                <p class="text-sm text-secondary leading-relaxed">
+                    The assigned agent will send the funds to your bank account shortly.
+                    Once you receive payment, confirm below to complete the transaction.
+                </p>
+            </div>
+
+            <!-- Amount -->
+            <div class="p-6 rounded-xl bg-green-50 border text-center">
+                <p class="text-xs text-secondary uppercase">Amount to Receive</p>
+                <p class="text-3xl font-extrabold text-green-700">₦{{ withdrawal.amount|floatformat:2|intcomma }}</p>
+            </div>
+
+            <!-- Agent Info -->
+            <div class="flex items-center space-x-4 p-5 rounded-xl border border-gray-200 bg-gray-50 shadow-sm">
+                {% if withdrawal.agent.profile.avatar %}
+                    <img src="{{ withdrawal.agent.profile.avatar.url }}"
+                         alt="{{ withdrawal.agent.get_full_name }}"
+                         class="h-16 w-16 rounded-full object-cover border">
+                {% else %}
+                    <div class="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-lg">
+                        {{ withdrawal.agent.first_name|first }}{{ withdrawal.agent.last_name|first }}
+                    </div>
+                {% endif %}
+
+                <div class="flex-1">
+                    <h4 class="text-base font-semibold text-dark">
+                        {{ withdrawal.agent.get_full_name|default:withdrawal.agent.username }}
+                    </h4>
+                    <p class="text-sm text-secondary">Withdrawal Agent</p>
+                    <div class="flex space-x-3 mt-2">
+                        <a href="tel:{{ withdrawal.agent.profile.phone }}"
+                           class="px-3 py-1.5 text-xs rounded-lg bg-green-600 text-white hover:bg-green-700 transition">
+                            📞 Call
+                        </a>
+                        <a href="mailto:{{ withdrawal.agent.email }}"
+                           class="px-3 py-1.5 text-xs rounded-lg border hover:bg-gray-100 transition">
+                            ✉️ Email
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agent Receipt (if uploaded) -->
+            {% if withdrawal.receipt %}
+            <div class="p-4 border rounded-xl bg-gray-50 text-center">
+                <p class="text-sm font-semibold text-dark mb-2">Agent Payment Receipt</p>
+                <a href="{{ withdrawal.receipt.url }}" target="_blank" class="text-green-600 underline text-sm">
+                    📎 View Receipt
+                </a>
+            </div>
+            {% endif %}
+
+            <!-- User Confirm Button -->
+            {% if withdrawal.status == "paid" and request.user == withdrawal.user %}
+            <form method="post" action="{% url 'payments:user_confirm_withdrawal' withdrawal.reference %}">
+                {% csrf_token %}
+                <button type="submit"
+                    class="w-full px-6 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition">
+                    ✅ I Have Received Payment
+                </button>
+            </form>
+            {% endif %}
+
+            {% if withdrawal.status == "completed" %}
+            <div class="p-4 rounded-xl bg-green-50 border border-green-100 text-center text-green-700 font-semibold">
+                ✅ Withdrawal Completed Successfully
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- RIGHT SIDE: Timeline + Status -->
+    <div class="space-y-6">
+        <div class="bg-white rounded-2xl border p-6 shadow-md space-y-4">
+            <h3 class="text-base font-semibold text-dark">Transaction Progress</h3>
+            <ul class="space-y-3 text-sm">
+                <li class="flex items-center space-x-2">
+                    <div class="h-2.5 w-2.5 rounded-full {% if withdrawal.status in 'pending accepted paid completed' %}bg-green-600{% else %}bg-gray-300{% endif %}"></div>
+                    <span>Request Created</span>
+                </li>
+                <li class="flex items-center space-x-2">
+                    <div class="h-2.5 w-2.5 rounded-full {% if withdrawal.status in 'accepted paid completed' %}bg-green-600{% else %}bg-gray-300{% endif %}"></div>
+                    <span>Agent Accepted</span>
+                </li>
+                <li class="flex items-center space-x-2">
+                    <div class="h-2.5 w-2.5 rounded-full {% if withdrawal.status in 'paid completed' %}bg-green-600{% else %}bg-gray-300{% endif %}"></div>
+                    <span>Agent Paid</span>
+                </li>
+                <li class="flex items-center space-x-2">
+                    <div class="h-2.5 w-2.5 rounded-full {% if withdrawal.status == 'completed' %}bg-green-600{% else %}bg-gray-300{% endif %}"></div>
+                    <span>Transaction Completed</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="bg-white rounded-2xl border p-6 shadow-md space-y-3 text-sm">
+            <div class="flex justify-between">
+                <span class="text-secondary">Status</span>
+                <span class="px-3 py-1 rounded-full text-xs font-semibold
+                    {% if withdrawal.status == 'pending' %} bg-yellow-100 text-yellow-700
+                    {% elif withdrawal.status == 'accepted' %} bg-blue-100 text-blue-700
+                    {% elif withdrawal.status == 'paid' %} bg-green-100 text-green-700
+                    {% elif withdrawal.status == 'completed' %} bg-indigo-100 text-indigo-700
+                    {% else %} bg-red-100 text-red-700 {% endif %}">
+                    {{ withdrawal.status|title }}
+                </span>
+            </div>
+
+            <div class="flex justify-between">
+                <span class="text-secondary">Created</span>
+                <span class="text-dark">{{ withdrawal.created_at|date:"M d, Y H:i" }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Countdown Script -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const status = "{{ withdrawal.status }}";
+    const countdownEl = document.getElementById("countdown");
+
+    if (status === "expired") {
+        countdownEl.textContent = "Expired";
+        countdownEl.classList.replace("bg-blue-50", "bg-gray-100");
+        countdownEl.classList.replace("text-blue-700", "text-gray-500");
+        return;
+    }
+
+    if (status === "completed") {
+        countdownEl.textContent = "Completed";
+        countdownEl.classList.replace("bg-blue-50", "bg-indigo-100");
+        countdownEl.classList.replace("text-blue-700", "text-indigo-700");
+        return;
+    }
+
+    if (status === "paid") {
+        countdownEl.textContent = "Awaiting Your Confirmation";
+        countdownEl.classList.replace("bg-blue-50", "bg-yellow-100");
+        countdownEl.classList.replace("text-blue-700", "text-yellow-700");
+    }
+
+    if (status !== "accepted" && status !== "paid") return;
+
+    const expiryTime = "{{ withdrawal.expires_at|date:'c' }}";
+    if (!expiryTime) {
+        countdownEl.textContent = "No expiry set";
+        return;
+    }
+
+    countdownEl.classList.add("bg-blue-50", "text-blue-700");
+
+    const expiry = new Date(expiryTime).getTime();
+    const timer = setInterval(() => {
+        const now = new Date().getTime();
+        const distance = expiry - now;
+
+        if (distance <= 0) {
+            clearInterval(timer);
+            countdownEl.textContent = "Expired";
+            countdownEl.classList.replace("bg-blue-50", "bg-gray-100");
+            countdownEl.classList.replace("text-blue-700", "text-gray-500");
+            return;
+        }
+
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        countdownEl.textContent = `${minutes}m ${seconds < 10 ? "0" : ""}${seconds}s`;
+    }, 1000);
+});
+</script>
+{% endblock %}

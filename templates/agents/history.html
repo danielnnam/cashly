@@ -1,0 +1,114 @@
+{% extends 'agents/base.html' %}
+{% load humanize %}
+{% block title %}Agent Transaction History{% endblock %}
+{% block page_title %}Transaction History{% endblock %}
+{% block page_subtitle %}View and manage all handled transactions{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Filter Bar -->
+  <div class="bg-white border border-border rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
+    <form method="get" class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+      <input type="text" name="search" value="{{ request.GET.search }}" placeholder="Search by user or ID..."
+             class="border border-border rounded-lg px-3 py-2 text-sm w-full md:w-56 focus:outline-none focus:ring-1 focus:ring-green-600">
+
+      <select name="type" class="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-600">
+        <option value="">All Types</option>
+        <option value="deposit" {% if request.GET.type == "deposit" %}selected{% endif %}>Deposit</option>
+        <option value="withdrawal" {% if request.GET.type == "withdrawal" %}selected{% endif %}>Withdrawal</option>
+        <option value="transfer" {% if request.GET.type == "transfer" %}selected{% endif %}>Transfer</option>
+      </select>
+
+      <select name="status" class="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-600">
+        <option value="">All Status</option>
+        <option value="completed" {% if request.GET.status == "completed" %}selected{% endif %}>Completed</option>
+        <option value="pending" {% if request.GET.status == "pending" %}selected{% endif %}>Pending</option>
+        <option value="failed" {% if request.GET.status == "failed" %}selected{% endif %}>Failed</option>
+      </select>
+
+      <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition">
+        <i class="fas fa-filter mr-1"></i> Filter
+      </button>
+    </form>
+  </div>
+
+  <!-- Transaction List -->
+  <div class="bg-white border border-border rounded-xl p-4">
+    <h2 class="text-lg font-semibold mb-4">Recent Transactions</h2>
+
+    <div class="max-h-[500px] overflow">
+      {% if transactions %}
+      <ul class="divide-y divide-border">
+        {% for tx in transactions %}
+        <li class="py-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 px-2 rounded-lg transition"
+            onclick="window.location.href='{% url 'wallet:transaction_detail' tx.transaction_id %}'">
+
+          <!-- Left Side: Icon + Info -->
+          <div class="flex items-center space-x-4">
+            <div class="w-10 h-10 rounded-full flex items-center justify-center
+                {% if tx.sender == wallet %}
+                    bg-red-100 text-red-600
+                {% else %}
+                    bg-green-100 text-green-600
+                {% endif %}">
+              {% if tx.transaction_type == "transfer" %}
+                <i class="fas fa-exchange-alt"></i>
+              {% elif tx.transaction_type == "deposit" %}
+                <i class="fas fa-arrow-down"></i>
+              {% elif tx.transaction_type == "withdrawal" %}
+                <i class="fas fa-arrow-up"></i>
+              {% else %}
+                <i class="fas fa-receipt"></i>
+              {% endif %}
+            </div>
+            <div>
+              <p class="font-medium text-dark">
+                {% if tx.transaction_type == "transfer" %}
+                  {% if tx.sender == wallet %}
+                    Sent to {{ tx.receiver.user.get_full_name|default:tx.receiver.user.username }}
+                  {% elif tx.receiver == wallet %}
+                    Received from {{ tx.sender.user.get_full_name|default:tx.sender.user.username }}
+                  {% endif %}
+                {% else %}
+                  {{ tx.transaction_type|capfirst }}
+                {% endif %}
+              </p>
+              <p class="text-xs text-secondary">{{ tx.created_at|date:"M d, Y H:i" }}</p>
+              <p class="text-[11px] text-gray-400">ID: {{ tx.transaction_id }}</p>
+            </div>
+          </div>
+
+          <!-- Right Side: Amount -->
+          <div class="text-right">
+            <p class="font-semibold 
+                {% if tx.sender == wallet %}
+                    text-red-600
+                {% else %}
+                    text-green-600
+                {% endif %}">
+              {% if tx.sender == wallet %}
+                -₦{{ tx.amount|floatformat:2|intcomma }}
+              {% else %}
+                +₦{{ tx.amount|floatformat:2|intcomma }}
+              {% endif %}
+            </p>
+            <p class="text-xs capitalize 
+                {% if tx.status == 'completed' %}text-green-600
+                {% elif tx.status == 'pending' %}text-yellow-600
+                {% else %}text-red-600{% endif %}">
+              {{ tx.status }}
+            </p>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+
+      {% else %}
+      <p class="text-secondary text-sm text-center py-6">No transactions found.</p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

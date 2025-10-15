@@ -1,0 +1,39 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block title %}Withdraw - Cashly{% endblock %}
+{% block page_title %}Withdraw Funds{% endblock %}
+{% block page_subtitle %}Request to withdraw money from your wallet{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Balance Overview -->
+    <div class="bg-white rounded-xl border border-border p-6">
+        <p class="text-secondary text-sm">Current Balance</p>
+        <h3 class="text-3xl font-bold mt-2">₦{{ wallet.balance|floatformat:2 }}</h3>
+        <p class="text-xs text-secondary mt-1">Ensure you have sufficient balance before withdrawing</p>
+    </div>
+
+    <!-- Withdraw Form -->
+    <div class="bg-white rounded-xl border border-border p-6">
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            <div>
+                {{ form.amount.label_tag }}
+                {{ form.amount }}
+                {% if form.amount.errors %}
+                    <p class="text-red-500 text-sm mt-1">{{ form.amount.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Submit -->
+            <button type="submit"
+                class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary/90 transition">
+                <i class="fas fa-arrow-right mr-2"></i> Continue
+            </button>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

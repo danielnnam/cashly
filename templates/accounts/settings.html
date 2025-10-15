@@ -1,0 +1,103 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}Settings - Cashly{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block page_subtitle %}Manage your account and preferences{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Accordion Item -->
+    <div class="bg-white rounded-xl border border-border">
+        <button class="accordion-btn w-full p-4 flex justify-between items-center text-left font-medium text-dark"
+                data-target="profileSettings">
+            Profile Settings <i class="fas fa-chevron-down"></i>
+        </button>
+        <div id="profileSettings" class="accordion-content hidden p-6 border-t space-y-4">
+            <p><strong>Name:</strong> {{ user.get_full_name }}</p>
+            <p><strong>Email:</strong> {{ user.email }}</p>
+            <p><strong>Phone:</strong> {{ user.profile.phone|default:"Not set" }}</p>
+            <a href="{% url 'edit_profile' %}" class="text-primary text-sm font-medium">Edit Profile</a>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-border">
+        <button class="accordion-btn w-full p-4 flex justify-between items-center text-left font-medium text-dark"
+                data-target="securitySettings">
+            Security Settings <i class="fas fa-chevron-down"></i>
+        </button>
+        <div id="securitySettings" class="accordion-content hidden p-6 border-t space-y-4">
+            {% if user.has_usable_password %}
+                <a href="{% url 'change_password' %}" class="btn">Change Password</a>
+            {% else %}
+                <a href="{% url 'change_password' %}" class="btn">Set Password</a>
+            {% endif %}
+
+            <a href="#" class="block text-primary">Set Transaction PIN</a>
+            <a href="{% url 'login_activity' %}" class="block text-primary">Login Activity</a>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-border">
+        <button class="accordion-btn w-full p-4 flex justify-between items-center text-left font-medium text-dark"
+                data-target="notifications">
+            Notifications <i class="fas fa-chevron-down"></i>
+        </button>
+        <div id="notifications" class="accordion-content hidden p-6 border-t space-y-4">
+            <label><input type="checkbox" {% if notifications.transaction_alerts %}checked{% endif %}> Transaction Alerts</label><br>
+            <label><input type="checkbox" {% if notifications.low_balance_alerts %}checked{% endif %}> Low Balance Alerts</label><br>
+            <label><input type="checkbox" {% if notifications.large_tx_alerts %}checked{% endif %}> Large Transaction Alerts</label>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-border">
+        <button class="accordion-btn w-full p-4 flex justify-between items-center text-left font-medium text-dark"
+                data-target="preferences">
+            App Preferences <i class="fas fa-chevron-down"></i>
+        </button>
+        <div id="preferences" class="accordion-content hidden p-6 border-t space-y-4">
+            <p><strong>Theme:</strong> {{ preferences.theme|capfirst }}</p>
+            <p><strong>Language:</strong> {{ preferences.language }}</p>
+            <a href="#" class="text-primary text-sm">Change Preferences</a>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-red-500">
+        <button class="accordion-btn w-full p-4 flex justify-between items-center text-left font-medium text-red-600"
+                data-target="dangerZone">
+            Danger Zone <i class="fas fa-chevron-down"></i>
+        </button>
+        <div id="dangerZone" class="accordion-content hidden p-6 border-t space-y-4">
+            <button class="w-full text-left text-red-600">Deactivate Account</button>
+            <button class="w-full text-left text-red-600">Delete Account</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+document.querySelectorAll(".accordion-btn").forEach(button => {
+    button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-target");
+        const targetContent = document.getElementById(targetId);
+
+        // Close all sections first
+        document.querySelectorAll(".accordion-content").forEach(content => {
+            content.classList.add("hidden");
+        });
+
+        // Rotate all arrows back
+        document.querySelectorAll(".accordion-btn i").forEach(icon => {
+            icon.classList.remove("rotate-180");
+        });
+
+        // Open only the clicked one
+        if (targetContent.classList.contains("hidden")) {
+            targetContent.classList.remove("hidden");
+            button.querySelector("i").classList.add("rotate-180");
+        }
+    });
+});
+</script>
+{% endblock %}

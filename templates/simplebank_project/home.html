@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashly - Modern Digital Banking</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#059669',     // Emerald green
+                        secondary: '#374151',   // Charcoal gray
+                        accent: '#10b981',      // Light green accent
+                        silver: '#f8fafc',      // Silver background
+                        dark: '#1f2937'         // Dark gray
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-silver">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 gradient-bg rounded-xl flex items-center justify-center">
+                        <i class="fas fa-coins text-white text-xl"></i>
+                    </div>
+                    <span class="text-2xl font-bold text-dark">Cashly</span>
+                </div>
+                
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#features" class="text-secondary hover:text-primary font-medium">Features</a>
+                    <a href="#security" class="text-secondary hover:text-primary font-medium">Security</a>
+                    <a href="#about" class="text-secondary hover:text-primary font-medium">About</a>
+                    <a href="#" class="text-secondary hover:text-primary font-medium">Online Banking</a>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <!-- Sign In (only on large screens) -->
+                    <a href="{% url 'login' %}" 
+                    class="hidden lg:inline-block text-secondary hover:text-primary font-medium">
+                    Sign In
+                    </a>
+
+                    <!-- Open Account (always visible) -->
+                    <a href="{% url 'register' %}" 
+                    class="bg-primary text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-emerald-700 transition duration-300 shadow-lg">
+                        Open Account
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden">
+        <div class="max-w-7xl mx-auto px-6 py-20">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <div class="space-y-8">
+                    <h1 class="text-5xl lg:text-6xl font-bold text-dark leading-tight">
+                        Banking Made
+                        <span class="text-primary">Simple</span>,
+                        Secure &
+                        <span class="text-primary">Smart</span>
+                    </h1>
+                    <p class="text-xl text-secondary leading-relaxed">
+                        Experience the future of digital banking with Cashly. Send money, manage finances, 
+                        and grow your wealth with our cutting-edge platform built for modern life.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <a href="{% url 'register' %}" class="bg-primary text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-emerald-700 transition duration-300 shadow-lg flex items-center justify-center space-x-2">
+                            <span>Get Started Free</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                        <a href="#features" class="border-2 border-primary text-primary px-8 py-4 rounded-lg font-semibold text-lg hover:bg-primary hover:text-white transition duration-300 flex items-center justify-center space-x-2">
+                            <span>Learn More</span>
+                            <i class="fas fa-play-circle"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="relative">
+                    <div class="bg-white rounded-2xl shadow-2xl p-8 card-hover">
+                        <div class="space-y-6">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <div class="text-secondary text-sm">Total Balance</div>
+                                    <div class="text-3xl font-bold text-dark">₦125,430.00</div>
+                                </div>
+                                <div class="w-12 h-12 gradient-bg rounded-full flex items-center justify-center">
+                                    <i class="fas fa-wallet text-white text-xl"></i>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <button class="bg-primary text-white py-3 rounded-lg font-semibold hover:bg-emerald-700 transition duration-200">
+                                    <i class="fas fa-arrow-up mr-2"></i>Send
+                                </button>
+                                <button class="bg-silver text-secondary py-3 rounded-lg font-semibold hover:bg-gray-200 transition duration-200">
+                                    <i class="fas fa-arrow-down mr-2"></i>Receive
+                                </button>
+                            </div>
+                            
+                            <div class="pt-4 border-t">
+                                <div class="text-sm text-secondary">Recent Activity</div>
+                                <div class="space-y-3 mt-2">
+                                    <div class="flex justify-between items-center">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                                <i class="fas fa-arrow-down text-green-600 text-xs"></i>
+                                            </div>
+                                            <span class="text-dark font-medium">Salary Deposit</span>
+                                        </div>
+                                        <span class="text-green-600 font-semibold">+₦85,000</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-dark mb-4">Why Choose Cashly?</h2>
+                <p class="text-xl text-secondary max-w-3xl mx-auto">
+                    Discover the features that make Cashly the preferred choice for modern banking
+                </p>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="bg-silver rounded-2xl p-8 card-hover">
+                    <div class="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center mb-6">
+                        <i class="fas fa-shield-alt text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-dark mb-4">Bank-Level Security</h3>
+                    <p class="text-secondary leading-relaxed">
+                        Your funds are protected with enterprise-grade security measures and encryption protocols.
+                    </p>
+                </div>
+                
+                <!-- Feature 2 -->
+                <div class="bg-silver rounded-2xl p-8 card-hover">
+                    <div class="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center mb-6">
+                        <i class="fas fa-bolt text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-dark mb-4">Instant Transfers</h3>
+                    <p class="text-secondary leading-relaxed">
+                        Send and receive money instantly between Cashly users with zero processing delays.
+                    </p>
+                </div>
+                
+                <!-- Feature 3 -->
+                <div class="bg-silver rounded-2xl p-8 card-hover">
+                    <div class="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center mb-6">
+                        <i class="fas fa-mobile-alt text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-dark mb-4">Mobile First</h3>
+                    <p class="text-secondary leading-relaxed">
+                        Full banking functionality optimized for mobile devices. Bank anywhere, anytime.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Security Section -->
+    <section id="security" class="py-20 gradient-bg">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <div>
+                    <h2 class="text-4xl font-bold text-white mb-6">Your Security is Our Priority</h2>
+                    <p class="text-emerald-100 text-lg leading-relaxed mb-8">
+                        We employ multi-layered security protocols including end-to-end encryption, 
+                        two-factor authentication, and real-time fraud monitoring to keep your assets safe.
+                    </p>
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-check-circle text-white text-xl"></i>
+                            <span class="text-white font-medium">256-bit SSL Encryption</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-check-circle text-white text-xl"></i>
+                            <span class="text-white font-medium">Biometric Authentication</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-check-circle text-white text-xl"></i>
+                            <span class="text-white font-medium">Real-time Fraud Detection</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-8 shadow-2xl">
+                    <div class="text-center mb-6">
+                        <div class="w-20 h-20 gradient-bg rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-lock text-white text-3xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-dark">Security Status: Active</h3>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center py-3 border-b">
+                            <span class="text-secondary">Encryption</span>
+                            <span class="text-green-600 font-semibold">Enabled</span>
+                        </div>
+                        <div class="flex justify-between items-center py-3 border-b">
+                            <span class="text-secondary">2FA Protection</span>
+                            <span class="text-green-600 font-semibold">Active</span>
+                        </div>
+                        <div class="flex justify-between items-center py-3 border-b">
+                            <span class="text-secondary">Session Monitoring</span>
+                            <span class="text-green-600 font-semibold">Live</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-20 bg-dark">
+        <div class="max-w-4xl mx-auto text-center px-6">
+            <h2 class="text-4xl font-bold text-white mb-6">Ready to Experience Modern Banking?</h2>
+            <p class="text-gray-300 text-xl mb-8">
+                Join thousands of satisfied users who trust Cashly with their financial needs.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="{% url 'register' %}" class="bg-primary text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-emerald-700 transition duration-300">
+                    Create Free Account
+                </a>
+                <a href="/auth/login/" class="border-2 border-gray-400 text-gray-300 px-8 py-4 rounded-lg font-semibold text-lg hover:border-white hover:text-white transition duration-300">
+                    Sign In to Account
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-secondary text-white py-12">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div>
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center">
+                            <i class="fas fa-coins text-white"></i>
+                        </div>
+                        <span class="text-xl font-bold">Cashly</span>
+                    </div>
+                    <p class="text-gray-300">
+                        Modern digital banking for the future. Secure, fast, and reliable.
+                    </p>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4">Quick Links</h4>
+                    <ul class="space-y-2 text-gray-300">
+                        <li><a href="#" class="hover:text-white">Online Banking</a></li>
+                        <li><a href="#" class="hover:text-white">Wallet</a></li>
+                        <li><a href="#" class="hover:text-white">Deposit Funds</a></li>
+                        <li><a href="#" class="hover:text-white">Admin Dashboard</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4">Support</h4>
+                    <ul class="space-y-2 text-gray-300">
+                        <li><a href="#" class="hover:text-white">Help Center</a></li>
+                        <li><a href="#" class="hover:text-white">Security Info</a></li>
+                        <li><a href="#" class="hover:text-white">Contact Us</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4">Connect</h4>
+                    <div class="flex space-x-4">
+                        <a href="#" class="w-10 h-10 border border-gray-400 rounded-full flex items-center justify-center hover:border-white hover:text-white">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 border border-gray-400 rounded-full flex items-center justify-center hover:border-white hover:text-white">
+                            <i class="fab fa-linkedin"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 border border-gray-400 rounded-full flex items-center justify-center hover:border-white hover:text-white">
+                            <i class="fab fa-github"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-600 mt-8 pt-8 text-center text-gray-400">
+                <p>&copy; 2024 Cashly. Built by Dev_Catalyst</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

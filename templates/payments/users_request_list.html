@@ -1,0 +1,138 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block title %}My Requests - Cashly{% endblock %}
+{% block page_title %}My Requests{% endblock %}
+{% block page_subtitle %}Easily manage and track all your deposits and withdrawals{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Filter Bar -->
+  <div class="bg-white border border-border rounded-xl p-4 shadow-sm">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+      <!-- Type Tabs -->
+      <div class="flex flex-wrap justify-center md:justify-start gap-2">
+        {% for t in type_filters %}
+        <a href="?type={{ t }}{% if status %}&status={{ status }}{% endif %}"
+           class="filter-link px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 border
+           {% if req_type == t %}
+              bg-primary text-white border-primary
+           {% elif not req_type and t == 'deposit' %}
+              bg-primary text-white border-primary
+           {% else %}
+              bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100
+           {% endif %}">
+          {{ t|title }}s
+        </a>
+        {% endfor %}
+      </div>
+
+      <!-- Status Filters -->
+      <div class="flex flex-wrap justify-center md:justify-end gap-2">
+        {% for s in status_filters %}
+        <a href="?{% if req_type %}type={{ req_type }}&{% endif %}status={{ s }}"
+           class="filter-link px-3 py-1.5 text-xs rounded-lg font-medium border transition-all duration-150
+           {% if status == s %}
+             bg-primary text-white border-primary
+           {% else %}
+             bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100
+           {% endif %}">
+           {{ s|title }}
+        </a>
+        {% endfor %}
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Requests List -->
+  <div id="request-list" class="space-y-4 mt-4">
+    {% for req in requests %}
+    <div class="bg-white border border-border rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
+      <div class="flex justify-between items-center mb-4">
+        <div>
+          <h3 class="text-xl font-semibold text-dark">₦{{ req.amount|floatformat:2 }}</h3>
+          <p class="text-xs text-secondary mt-1">Ref: {{ req.reference }}</p>
+        </div>
+        <span class="px-3 py-1.5 text-xs rounded-full font-medium tracking-wide
+          {% if req.status == 'pending' %} bg-yellow-100 text-yellow-800 border border-yellow-200
+          {% elif req.status == 'accepted' %} bg-blue-100 text-blue-800 border border-blue-200
+          {% elif req.status == 'completed' %} bg-green-100 text-green-800 border border-green-200
+          {% elif req.status == 'cancelled' %} bg-red-100 text-red-700 border border-red-200
+          {% elif req.status == 'expired' %} bg-gray-100 text-gray-600 border border-gray-200
+          {% endif %}">
+          {{ req.status|title }}
+        </span>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm text-secondary">
+        <p><span class="font-medium text-dark">Created:</span> {{ req.created_at|date:"M d, Y H:i" }}</p>
+        <p><span class="font-medium text-dark">Type:</span> {{ req.req_type|title }}</p>
+        <p><span class="font-medium text-dark">Agent:</span> {{ req.agent.username|default:"—" }}</p>
+      </div>
+
+      <div class="mt-5 flex justify-end">
+        {% if req.req_type == "deposit" %}
+          <a href="{% url 'payments:user_deposit_detail' req.reference %}"
+             class="px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all duration-150">
+             View Details
+          </a>
+        {% else %}
+          <a href="{% url 'payments:withdrawal_detail' req.reference %}"
+             class="px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all duration-150">
+             View Details
+          </a>
+        {% endif %}
+      </div>
+    </div>
+    {% empty %}
+    <div class="bg-white border border-border rounded-xl p-6 text-center text-secondary">
+      No requests found.
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+<!-- AJAX Filter Script -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const container = document.querySelector("#request-list");
+
+  function activateLink(link) {
+    document.querySelectorAll(".filter-link").forEach(a => {
+      a.classList.remove("bg-primary", "text-white", "border-primary");
+      a.classList.add("bg-gray-50", "text-gray-700", "border-gray-200");
+    });
+    link.classList.add("bg-primary", "text-white", "border-primary");
+    link.classList.remove("bg-gray-50", "text-gray-700", "border-gray-200");
+  }
+
+  document.querySelectorAll(".filter-link").forEach(link => {
+    link.addEventListener("click", function (e) {
+      e.preventDefault();
+      activateLink(this);
+      container.innerHTML = `
+        <div class="p-6 text-center text-secondary animate-pulse">
+          Loading requests...
+        </div>
+      `;
+      fetch(this.href, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const newDoc = parser.parseFromString(html, "text/html");
+          const newList = newDoc.querySelector("#request-list").innerHTML;
+          container.innerHTML = newList;
+          window.history.pushState({}, "", this.href);
+        })
+        .catch(() => {
+          container.innerHTML = `<div class="p-6 text-center text-red-500">Failed to load requests.</div>`;
+        });
+    });
+  });
+});
+</script>
+{% endblock %}

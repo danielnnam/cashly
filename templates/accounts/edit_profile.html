@@ -1,0 +1,109 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}Edit Profile - Cashly{% endblock %}
+{% block page_title %}Edit Profile{% endblock %}
+{% block page_subtitle %}Update your personal information{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    
+    <!-- Profile Form Card -->
+    <div class="bg-white rounded-xl border border-border shadow-sm p-6">
+        <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            {% csrf_token %}
+
+            <!-- Avatar -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-4 sm:space-y-0">
+                {% if request.user.profile.avatar %}
+                    <img src="{{ request.user.profile.avatar.url }}" alt="Avatar"
+                         class="w-24 h-24 sm:w-20 sm:h-20 rounded-full border border-border object-cover shadow-sm mx-auto sm:mx-0">
+                {% else %}
+                    <div class="w-24 h-24 sm:w-20 sm:h-20 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 border border-border mx-auto sm:mx-0">
+                        <i class="fas fa-user text-3xl"></i>
+                    </div>
+                {% endif %}
+
+                <!-- Upload Field -->
+                <div class="text-center sm:text-left">
+                    <label class="block text-sm font-medium text-dark">Change Avatar</label>
+                    <div class="mt-2">
+                        {{ profile_form.avatar }}
+                    </div>
+                    <p class="text-xs text-secondary mt-1">Supported: JPG, PNG. Max size 2MB.</p>
+                </div>
+            </div>
+
+            <hr class="border-border">
+
+            <!-- Name -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-dark mb-1">First Name</label>
+                    {{ user_form.first_name }}
+                    {{ user_form.first_name.errors }}
+                    <p class="text-xs text-secondary mt-1">Your first name as it appears on your account.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-dark mb-1">Last Name</label>
+                    {{ user_form.last_name }}
+                    {{ user_form.last_name.errors }}
+                    <p class="text-xs text-secondary mt-1">Your last name as it appears on your account.</p>
+                </div>
+            </div>
+
+            <!-- Email -->
+            <div>
+                <label class="block text-sm font-medium text-dark mb-1">Email</label>
+                {{ user_form.email }}
+                {{ user_form.email.errors }}
+                <p class="text-xs text-secondary mt-1">We’ll never share your email with anyone else.</p>
+            </div>
+
+            <!-- Phone -->
+            <div>
+                <label class="block text-sm font-medium text-dark mb-1">Phone Number</label>
+                {{ profile_form.phone }}
+                {{ profile_form.phone.errors }}
+            </div>
+
+            <hr class="border-border">
+
+            <!-- Bank Details -->
+            <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-dark">Bank Account Details</h3>
+
+                <div>
+                    <label class="block text-sm font-medium text-dark mb-1">Bank Name</label>
+                    {{ profile_form.bank_name }}
+                    {{ profile_form.bank_name.errors }}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-dark mb-1">Account Number</label>
+                    {{ profile_form.account_number }}
+                    {{ profile_form.account_number.errors }}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-dark mb-1">Account Holder Name</label>
+                    {{ profile_form.account_name }}
+                    {{ profile_form.account_name.errors }}
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex justify-end items-center pt-4 space-x-3">
+                <a href="{% url 'settings' %}" 
+                   class="px-4 py-2 border border-border rounded-lg text-secondary hover:bg-gray-50 transition">
+                    Cancel
+                </a>
+                <button type="submit" 
+                        class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 shadow-sm transition">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

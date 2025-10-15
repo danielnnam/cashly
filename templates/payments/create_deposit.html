@@ -1,0 +1,57 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block title %}Deposit - Cashly{% endblock %}
+{% block page_title %}Deposit Funds{% endblock %}
+{% block page_subtitle %}Request to add money to your wallet{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Balance Overview -->
+    <div class="bg-white rounded-xl border border-border p-6">
+        <p class="text-secondary text-sm">Current Balance</p>
+        <h3 class="text-3xl font-bold mt-2">₦{{ wallet.balance|floatformat:2 }}</h3>
+        <p class="text-xs text-secondary mt-1">Updates after admin approval</p>
+    </div>
+
+    <!-- Deposit Form -->
+    <div class="bg-white rounded-xl border border-border p-6">
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+
+            <!-- Amount -->
+            <div>
+                <label class="block text-sm font-medium text-dark mb-2">Amount (₦)</label>
+                {{ form.amount }}
+            </div>
+
+            <!-- Agent Selection -->
+            <div>
+                <h3 class="text-sm font-semibold text-dark mb-2">Choose an Agent</h3>
+                <div class="grid gap-4 md:grid-cols-2">
+                    {% for agent in agents %}
+                        <label class="block border rounded-lg p-4 cursor-pointer hover:shadow-md">
+                            <input type="radio" name="agent" value="{{ agent.id }}" class="hidden peer">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="font-semibold">{{ agent.user.get_full_name|default:agent.user.username }}</p>
+                                    <p class="text-sm text-gray-500">{{ agent.phone }}</p>
+                                </div>
+                                <span class="text-green-600 font-medium">Available</span>
+                            </div>
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <button type="submit"
+                class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary/90">
+                <i class="fas fa-plus-circle mr-2"></i> Submit Request
+            </button>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

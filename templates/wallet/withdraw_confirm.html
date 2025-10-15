@@ -1,0 +1,29 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Confirm Withdrawal - Cashly{% endblock %}
+{% block page_title %}Select Agent{% endblock %}
+{% block page_subtitle %}Choose an agent to process your withdrawal{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow-sm border border-border space-y-6">
+
+    <div class="text-center">
+        <p class="text-sm text-secondary">Amount to Withdraw</p>
+        <h2 class="text-3xl font-bold text-primary">₦{{ transaction.amount }}</h2>
+    </div>
+
+    <form method="POST" class="space-y-4">
+        {% csrf_token %}
+        <label class="block text-sm font-medium text-secondary mb-2">Select Agent</label>
+        <select name="agent_id" class="w-full p-2 border rounded-lg focus:ring-primary focus:border-primary">
+            <option value="">-- Choose Agent --</option>
+            {% for agent in agents %}
+            <option value="{{ agent.id }}">{{ agent.user.get_full_name|default:agent.user.username }}</option>
+            {% endfor %}
+        </select>
+
+        <button type="submit" class="w-full py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary/90">
+            Confirm & Continue
+        </button>
+    </form>
+</div>
+{% endblock %}

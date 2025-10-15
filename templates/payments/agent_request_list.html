@@ -1,0 +1,97 @@
+{% extends 'agents/base.html' %}
+{% load static %}
+
+{% block title %}Requests - Cashly{% endblock %}
+{% block page_title %}All Requests{% endblock %}
+{% block page_subtitle %}View and manage deposit/withdrawal requests{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Filter Tabs -->
+    <div class="bg-white rounded-xl border border-border p-4 overflow-x-auto">
+        <div class="flex items-center space-x-3 min-w-max">
+            <a href="?status=pending" 
+               class="px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap 
+               {% if request.GET.status == 'pending' %}bg-primary text-white{% else %}text-dark hover:bg-gray-100{% endif %}">
+                Pending
+            </a>
+            <a href="?status=approved" 
+               class="px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap 
+               {% if request.GET.status == 'approved' %}bg-green-600 text-white{% else %}text-dark hover:bg-gray-100{% endif %}">
+                Approved
+            </a>
+            <a href="?status=completed" 
+               class="px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap 
+               {% if request.GET.status == 'completed' %}bg-blue-600 text-white{% else %}text-dark hover:bg-gray-100{% endif %}">
+                Completed
+            </a>
+            <a href="?status=rejected" 
+               class="px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap 
+               {% if request.GET.status == 'rejected' %}bg-red-600 text-white{% else %}text-dark hover:bg-gray-100{% endif %}">
+                Rejected
+            </a>
+        </div>
+    </div>
+
+    <!-- Requests List -->
+    <div class="space-y-4">
+        {% for req in requests %}
+        <div class="bg-white border border-border rounded-xl p-6 shadow-sm">
+            <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+                <div>
+                    <h3 class="font-semibold text-dark">
+                        ₦{{ req.amount|floatformat:2 }}
+                    </h3>
+                    <p class="text-xs text-secondary">Reference: {{ req.reference }}</p>
+                </div>
+                <span class="px-3 py-1 text-xs rounded-full font-medium
+                    {% if req.status == 'pending' %} bg-yellow-100 text-yellow-700
+                    {% elif req.status == 'approved' %} bg-green-100 text-green-700
+                    {% elif req.status == 'completed' %} bg-blue-100 text-blue-700
+                    {% else %} bg-red-100 text-red-700 {% endif %}">
+                    {{ req.status|title }}
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <p><span class="text-secondary">Requested By:</span> {{ req.user.get_full_name }}</p>
+                <p><span class="text-secondary">Created:</span> {{ req.created_at|date:"M d, Y H:i" }}</p>
+                <p><span class="text-secondary">Type:</span> 
+                    {% if req.request_type == 'deposit' %}
+                        <span class="px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">Deposit</span>
+                    {% else %}
+                        <span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Withdrawal</span>
+                    {% endif %}
+                </p>
+            </div>
+
+            <!-- Actions -->
+            <div class="mt-4 flex flex-wrap items-center gap-3">
+                {% if req.status == "pending" %}
+                    {% if user.profile.is_agent %}
+                        <a href="" class="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90">
+                            Take Request
+                        </a>
+                    {% endif %}
+                    {% if req.user == user %}
+                        <a href="" class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700">
+                            Cancel
+                        </a>
+                    {% endif %}
+                {% endif %}
+                <a href="{% url 'payments:agent_request_detail' req.reference %}" 
+                   class="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50">
+                    View Details
+                </a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="bg-white border border-border rounded-xl p-6 text-center text-secondary">
+            No requests found.
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}

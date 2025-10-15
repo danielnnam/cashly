@@ -1,0 +1,261 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Deposit Request{% endblock %}
+{% load humanize %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- LEFT SIDE: Payment & Agent Details -->
+    <div class="lg:col-span-2 space-y-6">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-2xl font-bold text-dark">Deposit Request</h2>
+                <p class="text-sm text-secondary">Reference: {{ deposit.reference }}</p>
+            </div>
+            <div id="countdown"
+                class="px-4 py-2 rounded-lg bg-green-50 text-green-700 text-base font-semibold shadow-sm transition">
+                Awaiting Agent Confirmation
+            </div>
+        </div>
+
+        <!-- Payment Card -->
+        <div class="bg-white rounded-2xl border border-border shadow-md p-8 space-y-8">
+            <!-- Instructions -->
+            <div class="space-y-2 text-center">
+                <h3 class="text-lg font-semibold text-dark">Complete Your Payment</h3>
+                <p class="text-sm text-secondary leading-relaxed">
+                    Transfer the exact amount to the bank details below before time runs out.
+                    After payment, click <span class="font-semibold text-dark">“I Have Paid”</span>.
+                    The agent will confirm, and your wallet will be credited.
+                </p>
+            </div>
+
+            <!-- Agent Info -->
+            <div class="flex items-center space-x-4 p-5 rounded-xl border border-gray-200 bg-gray-50 shadow-sm">
+                {% if deposit.agent.profile.avatar %}
+                    <img src="{{ deposit.agent.profile.avatar.url }}"
+                         alt="{{ deposit.agent.get_full_name }}"
+                         class="h-16 w-16 rounded-full object-cover border">
+                {% else %}
+                    <div class="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-lg">
+                        {{ deposit.agent.first_name|first }}{{ deposit.agent.last_name|first }}
+                    </div>
+                {% endif %}
+
+                <div class="flex-1">
+                    <h4 class="text-base font-semibold text-dark">
+                        {{ deposit.agent.first_name }} {{ deposit.agent.last_name }}
+                    </h4>
+                    <p class="text-sm text-secondary">Deposit Agent</p>
+                    <div class="flex space-x-3 mt-2">
+                        <a href="tel:{{ deposit.agent.profile.phone }}"
+                           class="px-3 py-1.5 text-xs rounded-lg bg-green-600 text-white hover:bg-green-700 transition">
+                            📞 Call
+                        </a>
+                        <a href="mailto:{{ deposit.agent.email }}"
+                           class="px-3 py-1.5 text-xs rounded-lg border hover:bg-gray-100 transition">
+                            ✉️ Email
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bank Details -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div class="p-4 rounded-xl border bg-gray-50 text-center">
+                    <p class="text-xs text-secondary uppercase">Bank Name</p>
+                    <p class="font-medium text-dark mt-1">{{ deposit.agent.profile.bank_name }}</p>
+                </div>
+                <div class="p-4 rounded-xl border bg-gray-50 text-center">
+                    <p class="text-xs text-secondary uppercase">Account Number</p>
+                    <p class="font-medium text-dark mt-1 flex justify-center items-center space-x-2">
+                        <span id="acctNum">{{ deposit.agent.profile.account_number }}</span>
+                        <button onclick="copyText('acctNum')" class="text-green-600 text-xs hover:underline">Copy</button>
+                    </p>
+                </div>
+                <div class="p-4 rounded-xl border bg-gray-50 text-center">
+                    <p class="text-xs text-secondary uppercase">Account Holder</p>
+                    <p class="font-medium text-dark mt-1">{{ deposit.agent.profile.account_name }}</p>
+                </div>
+            </div>
+
+            <!-- Amount -->
+            <div class="p-6 rounded-xl bg-green-50 border text-center">
+                <p class="text-xs text-secondary uppercase">Amount to Pay</p>
+                <p class="text-3xl font-extrabold text-green-700">₦{{ deposit.amount|floatformat:2|intcomma }}</p>
+            </div>
+
+            <!-- Payment Action -->
+            {% if request.user == deposit.user and deposit.status == "accepted" %}
+            <form method="post" action="{% url 'payments:mark_as_paid_request' deposit.reference %}">
+                {% csrf_token %}
+                <button type="submit"
+                    class="w-full px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition">
+                    ✅ I Have Paid
+                </button>
+            </form>
+
+            <!-- Upload Receipt -->
+            <form method="post" action="{% url 'payments:upload_receipt' deposit.reference %}" enctype="multipart/form-data" class="mt-4">
+                {% csrf_token %}
+                <div class="p-4 border rounded-xl bg-gray-50">
+                    <label class="block text-sm font-semibold text-dark mb-2">Upload Payment Receipt</label>
+                    <input type="file" name="receipt" accept="image/*,application/pdf"
+                        class="block w-full text-sm text-gray-500
+                               file:mr-4 file:py-2 file:px-4
+                               file:rounded-lg file:border-0
+                               file:text-sm file:font-semibold
+                               file:bg-green-100 file:text-green-700
+                               hover:file:bg-green-200 transition"
+                        required>
+                    <p class="text-xs text-secondary mt-1">Accepted formats: JPG, PNG, PDF (max 5MB)</p>
+                </div>
+
+                <!-- Preview -->
+                <div id="receiptPreview" class="mt-4 hidden">
+                    <p class="text-sm text-secondary mb-1">Receipt Preview:</p>
+                    <img id="previewImage" class="max-h-48 rounded-lg border" src="">
+                </div>
+
+                <button type="submit"
+                    class="mt-4 w-full px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition">
+                    📤 Upload Receipt
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- RIGHT SIDE: Status + Countdown -->
+    <div class="space-y-6">
+        <!-- Status Card -->
+        <div class="bg-white rounded-2xl border p-6 shadow-md space-y-4">
+            <h3 class="text-base font-semibold text-dark">Transaction Progress</h3>
+            <ul class="space-y-3 text-sm">
+                <li class="flex items-center space-x-2">
+                    <div class="h-2.5 w-2.5 rounded-full {% if deposit.status in 'pending accepted paid completed' %}bg-green-600{% else %}bg-gray-300{% endif %}"></div>
+                    <span>Request Created</span>
+                </li>
+                <li class="flex items-center space-x-2">
+                    <div class="h-2.5 w-2.5 rounded-full {% if deposit.status in 'accepted paid completed' %}bg-green-600{% else %}bg-gray-300{% endif %}"></div>
+                    <span>Agent Accepted</span>
+                </li>
+                <li class="flex items-center space-x-2">
+                    <div class="h-2.5 w-2.5 rounded-full {% if deposit.status in 'paid completed' %}bg-green-600{% else %}bg-gray-300{% endif %}"></div>
+                    <span>Payment Made</span>
+                </li>
+                <li class="flex items-center space-x-2">
+                    <div class="h-2.5 w-2.5 rounded-full {% if deposit.status == 'completed' %}bg-green-600{% else %}bg-gray-300{% endif %}"></div>
+                    <span>Transaction Completed</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Info -->
+        <div class="bg-white rounded-2xl border p-6 shadow-md space-y-3 text-sm">
+            <div class="flex justify-between">
+                <span class="text-secondary">Status</span>
+                <span class="px-3 py-1 rounded-full text-xs font-semibold
+                    {% if deposit.status == 'pending' %} bg-yellow-100 text-yellow-700
+                    {% elif deposit.status == 'accepted' %} bg-green-100 text-green-700
+                    {% elif deposit.status == 'paid' %} bg-blue-100 text-blue-700
+                    {% elif deposit.status == 'completed' %} bg-indigo-100 text-indigo-700
+                    {% else %} bg-red-100 text-red-700 {% endif %}">
+                    {{ deposit.status|title }}
+                </span>
+            </div>
+
+            <div class="flex justify-between">
+                <span class="text-secondary">Created</span>
+                <span class="text-dark">{{ deposit.created_at|date:"M d, Y H:i" }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const status = "{{ deposit.status }}";
+    const countdownEl = document.getElementById("countdown");
+    const expiryTime = "{{ deposit.expires_at|date:'c' }}";  // <-- fixed line (ISO 8601)
+
+    if (["completed", "expired", "cancelled"].includes(status)) {
+        countdownEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+        countdownEl.classList.replace("bg-green-50", "bg-gray-100");
+        countdownEl.classList.replace("text-green-700", "text-gray-500");
+        return;
+    }
+
+    if (!expiryTime) {
+        countdownEl.textContent =
+            status === "pending" ? "Awaiting Agent Confirmation" :
+            status === "accepted" ? "Awaiting Payment" : "Processing";
+        return;
+    }
+
+    // Correct timezone-aware parsing
+    const expiry = Date.parse(expiryTime);
+    const timer = setInterval(() => {
+        const now = new Date().getTime();
+        const distance = expiry - now;
+
+        if (distance <= 0) {
+            clearInterval(timer);
+            countdownEl.textContent = "Expired";
+            countdownEl.classList.replace("bg-green-50", "bg-gray-100");
+            countdownEl.classList.replace("text-green-700", "text-gray-500");
+            return;
+        }
+
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        countdownEl.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+    }, 1000);
+});
+
+
+function copyText(id) {
+    const text = document.getElementById(id).innerText;
+    navigator.clipboard.writeText(text).then(() => alert("Copied: " + text));
+}
+
+// Receipt preview
+const fileInput = document.querySelector('input[name="receipt"]');
+if (fileInput) {
+    fileInput.addEventListener("change", function () {
+        const file = this.files[0];
+        const previewContainer = document.getElementById("receiptPreview");
+        const previewImage = document.getElementById("previewImage");
+
+        if (!file) return;
+
+        const allowedTypes = ["image/jpeg", "image/png", "application/pdf"];
+        if (!allowedTypes.includes(file.type)) {
+            alert("Invalid file type. Please upload JPG, PNG, or PDF.");
+            this.value = "";
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            alert("File too large. Max size is 5MB.");
+            this.value = "";
+            return;
+        }
+
+        if (file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                previewImage.src = e.target.result;
+                previewContainer.classList.remove("hidden");
+            };
+            reader.readAsDataURL(file);
+        } else {
+            previewContainer.classList.add("hidden");
+        }
+    });
+}
+</script>
+{% endblock %}

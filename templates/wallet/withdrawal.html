@@ -1,0 +1,16 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block title %}Withdraw Funds{% endblock %}
+
+{% block content %}
+<div class="container mx-auto py-8">
+  <h2 class="text-2xl font-bold mb-4">Withdraw Funds</h2>
+
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="bg-primary text-white px-6 py-2 rounded-lg mt-3">Request Withdrawal</button>
+  </form>
+</div>
+{% endblock %}

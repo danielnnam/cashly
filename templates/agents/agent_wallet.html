@@ -1,0 +1,148 @@
+{% extends 'agents/base.html' %}
+{% load humanize %}
+{% block title %}Agent Wallet - Cashly{% endblock %}
+{% block page_title %}Your Wallet{% endblock %}
+{% block page_subtitle %}Manage your balance, view earnings, and track transactions{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+  <!-- Wallet Overview -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Total Balance -->
+      <div class="bg-white rounded-xl border border-border p-6 shadow-sm hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+              <div>
+                  <p class="text-secondary text-sm font-medium">Total Balance</p>
+                  <h3 class="text-2xl font-bold text-dark mt-2">
+                      ₦{{ wallet.balance|floatformat:2|intcomma }}
+                  </h3>
+                  <p class="text-green-600 text-xs mt-1 flex items-center">
+                      <i class="fas fa-wallet mr-1"></i>Available funds
+                  </p>
+              </div>
+              <div class="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center">
+                  <i class="fas fa-wallet text-green-600 text-xl"></i>
+              </div>
+          </div>
+      </div>
+
+      <!-- Total Earned -->
+      <div class="bg-white rounded-xl border border-border p-6 shadow-sm hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+              <div>
+                  <p class="text-secondary text-sm font-medium">Total Earned</p>
+                  <h3 class="text-2xl font-bold text-dark mt-2">
+                      ₦{{ total_earned|default:"0.00"|intcomma }}
+                  </h3>
+                  <p class="text-blue-600 text-xs mt-1 flex items-center">
+                      <i class="fas fa-chart-line mr-1"></i>Lifetime earnings
+                  </p>
+              </div>
+              <div class="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
+                  <i class="fas fa-coins text-blue-600 text-xl"></i>
+              </div>
+          </div>
+      </div>
+
+      <!-- Withdrawable -->
+      <div class="bg-white rounded-xl border border-border p-6 shadow-sm hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+              <div>
+                  <p class="text-secondary text-sm font-medium">Withdrawable Balance</p>
+                  <h3 class="text-2xl font-bold text-dark mt-2">
+                      ₦{{ withdrawable|default:"0.00"|intcomma }}
+                  </h3>
+                  <p class="text-orange-600 text-xs mt-1 flex items-center">
+                      <i class="fas fa-hand-holding-usd mr-1"></i>Ready to withdraw
+                  </p>
+              </div>
+              <div class="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center">
+                  <i class="fas fa-money-bill-wave text-orange-600 text-xl"></i>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <!-- Withdraw Button -->
+  <div class="flex justify-end">
+      <a href="#" class="px-5 py-3 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition">
+          <i class="fas fa-arrow-up mr-2"></i>Withdraw Funds
+      </a>
+  </div>
+
+  <!-- Wallet Activity (Bybit style) -->
+  <div class="bg-white rounded-xl border border-border shadow-sm">
+      <div class="p-6 border-b border-border flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-dark">Wallet Activity</h2>
+          <a href="#" class="text-primary text-sm font-medium hover:text-green-700">View All</a>
+      </div>
+
+      <div class="p-6 h-[420px] overflow-y-auto">
+          {% if transactions %}
+              <ul class="space-y-3">
+                  {% for tx in transactions %}
+                  <li class="p-4 bg-white shadow-sm hover:shadow-md rounded-lg transition flex items-center justify-between cursor-pointer"
+                      onclick="window.location.href='{% url 'wallet:transaction_detail' tx.transaction_id %}'">
+
+                      <!-- Left side -->
+                      <div class="flex items-center space-x-4">
+                          <!-- Icon -->
+                          <div class="w-10 h-10 rounded-full flex items-center justify-center
+                              {% if tx.sender == wallet %}
+                                  bg-red-100 text-red-600
+                              {% else %}
+                                  bg-green-100 text-green-600
+                              {% endif %}">
+                              {% if tx.transaction_type == "deposit" %}
+                                  <i class="fas fa-arrow-down"></i>
+                              {% elif tx.transaction_type == "withdrawal" %}
+                                  <i class="fas fa-arrow-up"></i>
+                              {% elif tx.transaction_type == "transfer" %}
+                                  <i class="fas fa-exchange-alt"></i>
+                              {% else %}
+                                  <i class="fas fa-receipt"></i>
+                              {% endif %}
+                          </div>
+
+                          <!-- Details -->
+                          <div>
+                              <p class="font-medium text-dark text-sm">
+
+                              </p>
+                              <p class="text-secondary text-xs">
+                                  {{ tx.created_at|date:"M d, Y, h:i A" }}
+                              </p>
+                          </div>
+                      </div>
+
+                      <!-- Right side -->
+                      <div class="text-right">
+                          <p class="font-semibold text-sm
+                              {% if tx.sender == wallet %}
+                                  text-red-600
+                              {% else %}
+                                  text-green-600
+                              {% endif %}">
+                              {% if tx.sender == wallet %}
+                                  -₦{{ tx.amount|floatformat:2|intcomma }}
+                              {% else %}
+                                  +₦{{ tx.amount|floatformat:2|intcomma }}
+                              {% endif %}
+                          </p>
+                          <span class="text-xs text-secondary">{{ tx.status|capfirst }}</span>
+                      </div>
+                  </li>
+                  {% endfor %}
+              </ul>
+          {% else %}
+              <div class="text-center py-12">
+                  <i class="fas fa-receipt text-gray-300 text-5xl mb-4"></i>
+                  <p class="text-secondary text-lg font-medium">No wallet activity yet</p>
+                  <p class="text-secondary text-sm mt-1">Transactions will appear here once available.</p>
+              </div>
+          {% endif %}
+      </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,226 @@
+{% extends 'agents/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}{{ req_type|capfirst }} Detail - Cashly{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto mt-6 grid lg:grid-cols-3 gap-6">
+
+    <!-- LEFT COLUMN -->
+    <div class="lg:col-span-2 space-y-6">
+
+        <!-- AMOUNT + STATUS -->
+        <div class="bg-white rounded-2xl p-6 shadow border border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h3 class="text-4xl font-bold text-gray-900">
+                    ₦{{ request_obj.amount|floatformat:2|intcomma }}
+                </h3>
+                <p class="text-sm text-gray-500 mt-1">
+                    Ref: <span class="font-mono">{{ request_obj.reference }}</span> |
+                    {{ request_obj.created_at|date:"M d, Y H:i" }}
+                </p>
+            </div>
+            <span class="mt-4 sm:mt-0 px-4 py-2 text-xs font-semibold rounded-full
+                {% if request_obj.status == 'pending' %} bg-yellow-100 text-yellow-700
+                {% elif request_obj.status == 'accepted' %} bg-blue-100 text-blue-700
+                {% elif request_obj.status == 'paid' %} bg-purple-100 text-purple-700
+                {% elif request_obj.status == 'completed' %} bg-emerald-100 text-emerald-700
+                {% elif request_obj.status == 'expired' %} bg-gray-100 text-gray-600
+                {% elif request_obj.status == 'cancelled' %} bg-red-100 text-red-600
+                {% endif %}">
+                {{ request_obj.status|capfirst }}
+            </span>
+        </div>
+
+        <!-- USER INFO -->
+        <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow">
+            <h2 class="text-lg font-semibold text-gray-800 mb-3">
+                {% if req_type == "deposit" %}Depositor{% else %}Withdrawer{% endif %} Information
+            </h2>
+            <div class="flex items-center space-x-4">
+                {% if request_obj.user.profile.avatar %}
+                    <img src="{{ request_obj.user.profile.avatar.url }}" class="w-16 h-16 rounded-full object-cover border">
+                {% else %}
+                    <div class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-lg">
+                        {{ request_obj.user.first_name|first }}{{ request_obj.user.last_name|first }}
+                    </div>
+                {% endif %}
+                <div>
+                    {% if request_obj.status in "accepted paid completed" %}
+                        <p class="font-medium text-gray-900 text-lg">{{ request_obj.user.get_full_name|default:request_obj.user.username }}</p>
+                        <p class="text-sm text-gray-500">{{ request_obj.user.email }}</p>
+                        {% if request_obj.user.profile.phone %}
+                            <p class="text-sm text-gray-500">{{ request_obj.user.profile.phone }}</p>
+                        {% endif %}
+                    {% else %}
+                        <p class="font-medium text-gray-900">**** ****</p>
+                        <p class="text-xs text-gray-400 italic">User info visible after trade acceptance</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- DEPOSIT DETAILS -->
+        {% if show_deposit_details %}
+        <div class="bg-white rounded-2xl border border-gray-200 shadow p-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">💰 Deposit Instructions</h2>
+            {% if request_obj.status == "accepted" %}
+                <p class="text-sm text-gray-700 mb-3">Please receive payment from the user into your account below:</p>
+                <div class="space-y-3 text-sm text-gray-700">
+                    <div class="flex items-center justify-between">
+                        <span><strong>Bank:</strong> {{ request.user.profile.bank_name }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span><strong>Account Name:</strong> {{ request.user.profile.account_name }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span><strong>Account Number:</strong> {{ request.user.profile.account_number }}</span>
+                        <button onclick="copyToClipboard('{{ request.user.profile.account_number }}')" class="px-2 py-1 bg-gray-100 text-xs rounded hover:bg-gray-200">Copy</button>
+                    </div>
+                </div>
+                <p class="mt-4 text-xs text-gray-500">After receiving payment from the user, mark as "Received".</p>
+            {% elif request_obj.status == "completed" %}
+                <p class="text-sm text-emerald-700 font-medium">✅ Deposit successfully completed.</p>
+            {% else %}
+                <p class="text-sm text-gray-500">Waiting for an agent to accept this deposit.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- WITHDRAWAL BANK DETAILS -->
+        {% if show_bank_details %}
+        <div class="bg-white rounded-2xl border border-gray-200 shadow p-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">💳 User Bank Details</h2>
+            <div class="space-y-3 text-sm text-gray-700">
+                <div class="flex items-center justify-between">
+                    <span><strong>Bank:</strong> {{ request_obj.user.profile.bank_name }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span><strong>Account Name:</strong> {{ request_obj.user.profile.account_name }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span><strong>Account Number:</strong> {{ request_obj.user.profile.account_number }}</span>
+                    <button onclick="copyToClipboard('{{ request_obj.user.profile.account_number }}')" class="px-2 py-1 bg-gray-100 text-xs rounded hover:bg-gray-200">Copy</button>
+                </div>
+            </div>
+            <p class="mt-4 text-xs text-gray-500">Please transfer the withdrawal amount to the user’s bank account above.</p>
+        </div>
+        {% endif %}
+
+        <!-- RECEIPT -->
+        {% if request_obj.receipt %}
+        <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow">
+            <h2 class="text-lg font-semibold text-gray-800 mb-3">📎 Payment Receipt</h2>
+            <a href="{{ request_obj.receipt.url }}" target="_blank"
+               class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 transition">
+                View Receipt
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="space-y-6 lg:sticky lg:top-24 h-fit">
+
+        <!-- COUNTDOWN -->
+        {% if request_obj.status in "accepted paid" and request_obj.expires_at %}
+        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow">
+            <h2 class="text-sm font-medium text-gray-800 mb-2">⏱ Time Remaining</h2>
+            <div class="flex items-center justify-between">
+                <span id="countdown" class="font-semibold text-gray-900 text-base"></span>
+                <div class="w-full h-1 bg-gray-200 rounded-full overflow-hidden ml-4">
+                    <div id="progress" class="h-1 bg-emerald-500 transition-all duration-500 ease-linear"></div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ACTIONS -->
+        <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow flex flex-col gap-3">
+            {% if request_obj.status == "pending" %}
+                <form method="post" action="{% url 'payments:agent_take_request' request_obj.reference %}">
+                    {% csrf_token %}
+                    <button type="submit" class="w-full px-6 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition">
+                        Accept {{ req_type|capfirst }} Trade
+                    </button>
+                </form>
+
+            {% elif request_obj.status in "accepted paid" and request.user == request_obj.agent %}
+                {% if req_type == "withdrawal" %}
+                    <form method="post" action="{% url 'payments:agent_mark_withdrawal_paid' request_obj.reference %}">
+                        {% csrf_token %}
+                        <button type="submit" class="w-full px-6 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition">
+                            ✅ I Have Paid
+                        </button>
+                    </form>
+                {% else %}
+                    <form method="post" action="{% url 'payments:agent_confirm_request' request_obj.reference %}">
+                        {% csrf_token %}
+                        <button type="submit" class="w-full px-6 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition">
+                            ✅ I Have Received
+                        </button>
+                    </form>
+                {% endif %}
+
+            {% elif request_obj.status == "completed" %}
+                <div class="text-center text-sm text-emerald-700 font-medium">
+                    ✅ Transaction Completed Successfully
+                </div>
+
+            {% elif request_obj.status == "expired" %}
+                <div class="text-center text-sm text-red-600 font-medium">
+                    ⚠️ Transaction Expired
+                </div>
+            {% endif %}
+            <a href="{% url 'payments:agent_request_list' %}" class="mt-2 w-full px-6 py-2.5 border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 text-center transition">
+                Back to List
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Copy Function -->
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert("Copied to clipboard: " + text);
+    });
+}
+</script>
+
+<!-- Countdown Script -->
+{% if request_obj.status in "accepted paid" and request_obj.expires_at %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const expiryTime = new Date("{{ request_obj.expires_at|date:'c' }}").getTime();
+    const startTime = new Date("{{ request_obj.accepted_at|date:'c' }}").getTime();
+    const totalTime = expiryTime - startTime;
+    const countdownEl = document.getElementById("countdown");
+    const progressEl = document.getElementById("progress");
+
+    function updateCountdown() {
+        const now = new Date().getTime();
+        const remaining = expiryTime - now;
+
+        if (remaining <= 0) {
+            countdownEl.textContent = "Expired";
+            progressEl.style.width = "0%";
+            clearInterval(timer);
+            return;
+        }
+
+        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+        countdownEl.textContent = `${minutes}m ${seconds < 10 ? "0" : ""}${seconds}s`;
+
+        const progressPercent = (remaining / totalTime) * 100;
+        progressEl.style.width = `${progressPercent}%`;
+    }
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+});
+</script>
+{% endif %}
+{% endblock %}

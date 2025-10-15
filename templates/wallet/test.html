@@ -1,0 +1,145 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block title %}Wallet Overview - Cashly{% endblock %}
+
+{% block page_title %}Wallet Overview{% endblock %}
+{% block page_subtitle %}Manage your balance and recent transactions{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Balance Card -->
+    <div class="bg-white rounded-xl border border-border p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-secondary text-sm font-medium">Current Balance</p>
+                <h3 class="text-3xl font-bold text-dark mt-2">₦{{ wallet.balance|floatformat:2 }}</h3>
+                <p class="text-primary text-xs mt-1 flex items-center">
+                    <i class="fas fa-wallet mr-1"></i>Account: {{ wallet.account_number }}
+                </p>
+                <p class="text-secondary text-xs mt-1">Updated: {{ wallet.updated_at|date:"M d, Y H:i" }}</p>
+            </div>
+            <div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                <i class="fas fa-wallet text-primary text-2xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-2 gap-4">
+        <a href="{% url 'payments:deposit_request' %}" 
+           class="bg-white rounded-xl border border-border p-6 text-center hover:shadow-md transition">
+            <i class="fas fa-plus-circle text-primary text-2xl mb-2"></i>
+            <p class="text-dark font-medium">Deposit</p>
+            <p class="text-xs text-secondary">Add funds to wallet</p>
+        </a>
+        <a href="#" 
+           class="bg-white rounded-xl border border-border p-6 text-center hover:shadow-md transition">
+            <i class="fas fa-arrow-down text-red-500 text-2xl mb-2"></i>
+            <p class="text-dark font-medium">Withdraw</p>
+            <p class="text-xs text-secondary">Send funds to bank</p>
+        </a>
+    </div>
+
+    <!-- Transactions -->
+    <div class="bg-white rounded-xl border border-border">
+        <div class="p-6 border-b border-border">
+            <h2 class="text-lg font-semibold text-dark">Recent Transactions</h2>
+        </div>
+        <div class="p-6">
+            {% if recent_transactions %}
+            <div class="overflow-x-auto">
+                <table id="transactionsTable" class="w-full text-sm border-collapse">
+                    <thead>
+                        <tr class="bg-light text-secondary">
+                            <th class="px-4 py-2 text-left">Date</th>
+                            <th class="px-4 py-2 text-left">Details</th>
+                            <th class="px-4 py-2 text-left">Amount</th>
+                            <th class="px-4 py-2 text-left">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tx in recent_transactions %}
+                        <tr class="border-t">
+                            <td class="px-4 py-2">{{ tx.created_at|date:"Y-m-d H:i" }}</td>
+                            
+                            <td class="px-4 py-2">
+                                {% if tx.transaction_type == "transfer" %}
+                                    {% if tx.sender == wallet %}
+                                        Sent to {{ tx.receiver.user.get_full_name|default:tx.receiver.user.username }}
+                                    {% elif tx.receiver == wallet %}
+                                        Received from {{ tx.sender.user.get_full_name|default:tx.sender.user.username }}
+                                    {% endif %}
+                                {% else %}
+                                    {{ tx.transaction_type|capfirst }}
+                                {% endif %}
+                            </td>
+
+                            <td class="px-4 py-2 
+                                {% if tx.transaction_type == 'transfer' and tx.sender == wallet %}
+                                    text-red-600
+                                {% elif tx.transaction_type == 'transfer' and tx.receiver == wallet %}
+                                    text-green-600
+                                {% elif tx.transaction_type == 'deposit' %}
+                                    text-green-600
+                                {% else %}
+                                    text-red-600
+                                {% endif %}
+                            ">
+                                {% if tx.transaction_type == 'transfer' %}
+                                    {% if tx.sender == wallet %}
+                                        -₦{{ tx.amount }}
+                                    {% else %}
+                                        +₦{{ tx.amount }}
+                                    {% endif %}
+                                {% elif tx.transaction_type == 'deposit' %}
+                                    +₦{{ tx.amount }}
+                                {% elif tx.transaction_type == 'withdrawal' %}
+                                    -₦{{ tx.amount }}
+                                {% endif %}
+                            </td>
+
+                            <td class="px-4 py-2 capitalize">{{ tx.status }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-secondary text-sm">No recent transactions available.</p>
+            {% endif %}
+        </div>
+
+
+    </div>
+
+    <!-- Back -->
+    <div class="text-center pt-4">
+        <a href="{% url 'dashboard' %}" 
+           class="inline-flex items-center text-primary hover:text-primary/80 font-medium transition duration-200">
+            <i class="fas fa-arrow-left mr-1"></i>
+            Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        $('#transactionsTable').DataTable({
+            pageLength: 5,   // Show 5 rows per page
+            lengthMenu: [5, 10, 25, 50],
+            order: [[0, 'desc']], // Sort by date (newest first)
+            language: {
+                search: "🔍 Search transactions:",
+                lengthMenu: "Show _MENU_ entries per page",
+                info: "Showing _START_ to _END_ of _TOTAL_ transactions",
+                paginate: {
+                    previous: "⬅ Prev",
+                    next: "Next ➡"
+                }
+            }
+        });
+    });
+</script>
+
+{% endblock %}

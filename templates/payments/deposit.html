@@ -1,0 +1,163 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}Deposit Detail - Cashly{% endblock %}
+
+{% block page_title %}Deposit Details{% endblock %}
+{% block page_subtitle %}Follow the instructions to complete your deposit{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Deposit Overview -->
+    <div class="bg-white rounded-xl border border-border p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-secondary text-sm font-medium">Reference</p>
+                <h3 class="text-xl font-bold text-dark mt-1">{{ deposit.reference }}</h3>
+                <p class="text-sm text-secondary mt-1">Created: {{ deposit.created_at|date:"M d, Y H:i" }}</p>
+            </div>
+            <div id="countdown" 
+                 class="px-4 py-2 rounded-lg bg-red-100 text-red-600 text-sm font-semibold">
+                15:00
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Instructions -->
+    <div class="bg-white rounded-xl border border-border">
+        <div class="p-6 border-b border-border">
+            <h2 class="text-lg font-semibold text-dark">Complete Your Payment</h2>
+            <p class="text-sm text-secondary mt-1">
+                Please transfer the exact amount to the agent’s bank account before the timer expires.  
+                After payment, click <strong>"I Have Paid"</strong> and upload your receipt.
+            </p>
+        </div>
+
+        <div class="p-6 space-y-6">
+            <!-- Agent Card -->
+            <div class="flex items-center space-x-4">
+                {% if deposit.agent.profile.avatar %}
+                    <img src="{{ deposit.agent.profile.avatar.url }}" 
+                        alt="{{ deposit.agent.get_full_name }}"
+                        class="h-14 w-14 rounded-full object-cover border">
+                {% else %}
+                    <div class="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+                        {{ deposit.agent.first_name|first }}{{ deposit.agent.last_name|first }}
+                    </div>
+                {% endif %}
+
+                <div>
+                    <h4 class="text-base font-semibold text-dark">
+                        {{ deposit.agent.first_name }} {{ deposit.agent.last_name }}
+                    </h4>
+                    <p class="text-sm text-secondary">Deposit Agent</p>
+                    <p class="text-xs text-secondary mt-1">Phone: {{ deposit.agent.profile.phone }}</p>
+                </div>
+            </div>
+
+            <!-- Bank Details -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div class="p-4 border rounded-lg">
+                    <p class="text-xs text-secondary uppercase">Bank Name</p>
+                    <p class="font-medium text-dark mt-1">{{ deposit.agent.profile.bank_name }}</p>
+                </div>
+                <div class="p-4 border rounded-lg">
+                    <p class="text-xs text-secondary uppercase">Account Number</p>
+                    <p class="font-medium text-dark mt-1 flex items-center space-x-2">
+                        <span id="acctNum">{{ deposit.agent.profile.account_number }}</span>
+                        <button onclick="copyText('acctNum')" class="text-xs text-primary hover:underline">Copy</button>
+                    </p>
+                </div>
+                <div class="p-4 border rounded-lg">
+                    <p class="text-xs text-secondary uppercase">Account Holder</p>
+                    <p class="font-medium text-dark mt-1">{{ deposit.agent.profile.account_name }}</p>
+                </div>
+            </div>
+
+            <!-- Amount -->
+            <div class="p-4 bg-gray-50 border rounded-lg text-center">
+                <p class="text-xs text-secondary uppercase">Amount to Pay</p>
+                <p class="text-2xl font-bold text-dark">₦{{ deposit.amount|floatformat:2 }}</p>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex flex-col sm:flex-row gap-4">
+                <button class="w-full sm:w-auto px-6 py-3 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition">
+                    ✅ I Have Paid
+                </button>
+
+                {% if deposit.status == "pending" %}
+                <a href="{% url 'payments:upload_receipt' deposit.reference %}" 
+                   class="w-full sm:w-auto px-6 py-3 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition text-center">
+                   ⬆️ Upload Receipt
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Info -->
+    <div class="bg-white rounded-xl border border-border p-6">
+        <h3 class="text-base font-semibold text-dark mb-4">Transaction Info</h3>
+
+        <div class="flex items-center justify-between text-sm mb-2">
+            <span class="text-secondary">Status</span>
+            <span class="px-3 py-1 rounded-full text-xs font-semibold
+                {% if deposit.status == 'pending' %} bg-yellow-100 text-yellow-700
+                {% elif deposit.status == 'approved' %} bg-green-100 text-green-700
+                {% else %} bg-red-100 text-red-700 {% endif %}">
+                {{ deposit.status|title }}
+            </span>
+        </div>
+
+        <div class="flex items-center justify-between text-sm">
+            <span class="text-secondary">Created</span>
+            <span class="text-dark">{{ deposit.created_at|date:"M d, Y H:i" }}</span>
+        </div>
+    </div>
+
+    <!-- Back to Dashboard -->
+    <div class="text-center pt-4">
+        <a href="{% url 'dashboard' %}" 
+           class="inline-flex items-center text-primary hover:text-primary/80 font-medium">
+            <i class="fas fa-arrow-left mr-2"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // Countdown Timer
+    let expiry = new Date("{{ deposit.expires_at|date:'Y-m-d H:i:s' }}").getTime();
+    let countdownEl = document.getElementById("countdown");
+
+    let timer = setInterval(function () {
+        let now = new Date().getTime();
+        let distance = expiry - now;
+
+        if (distance <= 0) {
+            clearInterval(timer);
+            countdownEl.textContent = "Expired";
+            countdownEl.classList.remove("bg-red-100", "text-red-600");
+            countdownEl.classList.add("bg-gray-200", "text-gray-500");
+            return;
+        }
+
+        let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        countdownEl.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+    }, 1000);
+});
+
+// Copy-to-clipboard
+function copyText(elementId) {
+    const text = document.getElementById(elementId).innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        alert("Copied: " + text);
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,269 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Dashboard - Cashly{% endblock %}
+
+{% block page_title %}Welcome back, {{ user.first_name|default:user.username }}!{% endblock %}
+{% block page_subtitle %}Here's your financial overview{% endblock %}
+{% load humanize %}
+
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Quick Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Total Balance -->
+        <div class="bg-white rounded-xl border border-border p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-secondary text-sm font-medium">Total Balance</p>
+                    <h3 class="text-2xl font-bold text-dark mt-2">₦{{ balance|default:"0.00"|intcomma }}</h3>
+                    <p class="text-green-600 text-xs mt-1 flex items-center">
+                        <i class="fas fa-wallet mr-1"></i>Available balance
+                    </p>
+                </div>
+                <div class="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center">
+                    <i class="fas fa-coins text-green-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- This Month Transactions -->
+        <div class="bg-white rounded-xl border border-border p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-secondary text-sm font-medium">This Month</p>
+                    <h3 class="text-2xl font-bold text-dark mt-2">{{ month_transactions }}<h3>
+                    <p class="text-blue-600 text-xs mt-1 flex items-center">
+                        <i class="fas fa-exchange-alt mr-1"></i>Transactions
+                    </p>
+                </div>
+                <div class="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
+                    <i class="fas fa-chart-line text-blue-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Status -->
+        <div class="bg-white rounded-xl border border-border p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-secondary text-sm font-medium">Account Status</p>
+                    <h3 class="text-2xl font-bold text-dark mt-2">Active</h3>
+                    <p class="text-green-600 text-xs mt-1 flex items-center">
+                        <i class="fas fa-shield-alt mr-1"></i>Verified
+                    </p>
+                </div>
+                <div class="w-12 h-12 bg-purple-50 rounded-full flex items-center justify-center">
+                    <i class="fas fa-user-check text-purple-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Action -->
+        <div class="bg-white rounded-xl border border-border p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-secondary text-sm font-medium">Quick Action</p>
+                    <h3 class="text-2xl font-bold text-dark mt-2">Send</h3>
+                    <p class="text-orange-600 text-xs mt-1 flex items-center">
+                        <i class="fas fa-bolt mr-1"></i>Instant transfer
+                    </p>
+                </div>
+                <div class="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center">
+                    <i class="fas fa-paper-plane text-orange-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Two Column Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Recent Transactions -->
+        <div class="bg-white rounded-xl border border-border">
+            <div class="p-6 border-b border-border">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-dark">Recent Transactions</h2>
+                    <a href="{% url 'wallet:history' %}" class="text-primary text-sm font-medium hover:text-green-700">View All</a>
+                </div>
+            </div>
+
+            <div class="p-6 h-[400px] overflow">
+                {% if recent_transactions %}
+                    <ul class="space-y-3">
+                        {% for tx in recent_transactions %}
+                        <li class="p-4 bg-white shadow-sm hover:shadow-md rounded-lg transition flex items-center justify-between cursor-pointer"
+                            onclick='window.location.href="{% url "wallet:transaction_detail" tx.transaction_id %}"'>
+
+                            <!-- Left side -->
+                            <div class="flex items-center space-x-4">
+                                <!-- Transaction Icon -->
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center
+                                    {% if tx.transaction_type == 'transfer' and tx.sender == wallet %}
+                                        bg-red-100 text-red-600
+                                    {% elif tx.transaction_type == 'transfer' and tx.receiver == wallet %}
+                                        bg-green-100 text-green-600
+                                    {% elif tx.transaction_type == 'deposit' %}
+                                        bg-green-100 text-green-600
+                                    {% else %}
+                                        bg-red-100 text-red-600
+                                    {% endif %}">
+                                    {% if tx.transaction_type == "transfer" %}
+                                        <i class="fas fa-exchange-alt"></i>
+                                    {% elif tx.transaction_type == "deposit" %}
+                                        <i class="fas fa-arrow-down"></i>
+                                    {% elif tx.transaction_type == "withdrawal" %}
+                                        <i class="fas fa-arrow-up"></i>
+                                    {% else %}
+                                        <i class="fas fa-receipt"></i>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Transaction Details -->
+                                <div>
+                                    <p class="font-medium text-dark text-sm">
+                                        {% if tx.transaction_type == "transfer" %}
+                                            {% if tx.sender == wallet %}
+                                                Sent to {{ tx.receiver.user.get_full_name|default:tx.receiver.user.username }}
+                                            {% elif tx.receiver == wallet %}
+                                                Received from {{ tx.sender.user.get_full_name|default:tx.sender.user.username }}
+                                            {% endif %}
+                                        {% else %}
+                                            {{ tx.transaction_type|capfirst }}
+                                        {% endif %}
+                                    </p>
+                                    <p class="text-secondary text-xs">
+                                        {{ tx.created_at|date:"M d, Y, h:i A" }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Right side -->
+                            <div class="text-right">
+                                <p class="font-semibold text-sm
+                                    {% if tx.transaction_type == 'transfer' and tx.sender == wallet %}
+                                        text-red-600
+                                    {% elif tx.transaction_type == 'transfer' and tx.receiver == wallet %}
+                                        text-green-600
+                                    {% elif tx.transaction_type == 'deposit' %}
+                                        text-green-600
+                                    {% else %}
+                                        text-red-600
+                                    {% endif %}">
+                                    {% if tx.transaction_type == 'transfer' %}
+                                        {% if tx.sender == wallet %}
+                                            -₦{{ tx.amount|floatformat:2|intcomma }}
+                                        {% else %}
+                                            +₦{{ tx.amount|floatformat:2|intcomma }}
+                                        {% endif %}
+                                    {% elif tx.transaction_type == 'deposit' %}
+                                        +₦{{ tx.amount|floatformat:2|intcomma }}
+                                    {% elif tx.transaction_type == 'withdrawal' %}
+                                        -₦{{ tx.amount|floatformat:2|intcomma }}
+                                    {% endif %}
+
+                                </p>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="text-center py-12">
+                        <i class="fas fa-exchange-alt text-gray-300 text-5xl mb-4"></i>
+                        <p class="text-secondary text-lg font-medium">No transactions yet</p>
+                        <p class="text-secondary text-sm mt-1">Your transactions will appear here once available.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+
+        <!-- Quick Actions & Security -->
+        <div class="space-y-6">
+            <!-- Quick Actions -->
+            <div class="bg-white rounded-xl border border-border">
+                <div class="p-6 border-b border-border">
+                    <h2 class="text-lg font-semibold text-dark">Quick Actions</h2>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Send Money -->
+                        <a href="{% url 'wallet:send' %}" class="flex flex-col items-center p-4 border border-border rounded-lg hover:border-primary hover:bg-green-50 transition duration-200 group">
+                            <i class="fas fa-paper-plane text-2xl text-secondary group-hover:text-primary mb-2"></i>
+                            <span class="font-medium text-sm group-hover:text-primary">Send Money</span>
+                        </a>
+
+                        <!-- Add Money -->
+                        <a href="{% url 'payments:start_deposit' %}" class="flex flex-col items-center p-4 border border-border rounded-lg hover:border-primary hover:bg-green-50 transition duration-200 group">
+                            <i class="fas fa-plus-circle text-2xl text-secondary group-hover:text-primary mb-2"></i>
+                            <span class="font-medium text-sm group-hover:text-primary">Add Money</span>
+                        </a>
+
+                        <!-- Withdraw -->
+                        <a href="{% url 'payments:start_withdrawal' %}" class="flex flex-col items-center p-4 border border-border rounded-lg hover:border-primary hover:bg-green-50 transition duration-200 group">
+                            <i class="fas fa-university text-2xl text-secondary group-hover:text-primary mb-2"></i>
+                            <span class="font-medium text-sm group-hover:text-primary">Withdraw</span>
+                        </a>
+
+                        <!-- Transaction History -->
+                        <a href="{% url 'wallet:history' %}" class="flex flex-col items-center p-4 border border-border rounded-lg hover:border-primary hover:bg-green-50 transition duration-200 group">
+                            <i class="fas fa-history text-2xl text-secondary group-hover:text-primary mb-2"></i>
+                            <span class="font-medium text-sm group-hover:text-primary">History</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Security Status -->
+            <div class="bg-white rounded-xl border border-border">
+                <div class="p-6 border-b border-border">
+                    <h2 class="text-lg font-semibold text-dark">Security Status</h2>
+                </div>
+                <div class="p-6">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-shield-alt text-green-600"></i>
+                                <span class="text-sm text-dark">Account Protection</span>
+                            </div>
+                            <span class="text-green-600 text-sm font-medium">Active</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-envelope text-green-600"></i>
+                                <span class="text-sm text-dark">Email Verified</span>
+                            </div>
+                            <span class="text-green-600 text-sm font-medium">Verified</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-mobile-alt text-blue-600"></i>
+                                <span class="text-sm text-dark">2FA Protection</span>
+                            </div>
+                            <span class="text-secondary text-sm">Not Set</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+  async function refreshBalance() {
+    try {
+      const response = await fetch("{{ balance_api_url }}");
+      if (!response.ok) return;
+      const data = await response.json();
+      document.getElementById("balance").innerText = data.balance;
+    } catch (e) {
+      console.error("Balance fetch failed", e);
+    }
+  }
+
+  // Refresh every 30 seconds
+  setInterval(refreshBalance, 30000);
+  // Also refresh once immediately
+  refreshBalance();
+</script>
+{% endblock %}

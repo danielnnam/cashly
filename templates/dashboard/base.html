@@ -1,0 +1,423 @@
+{% load humanize %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard - Cashly{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+
+    <!-- jQuery + DataTables JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#059669',
+                        secondary: '#6b7280',
+                        dark: '#111827',
+                        light: '#f8fafc',
+                        border: '#e5e7eb'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .sidebar:hover { width: 260px; }
+        .sidebar { transition: width 0.3s ease; }
+        .active-nav {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            color: white;
+        }
+        .active-nav i { color: white; }
+        .overflow { overflow-y: scroll; scrollbar-width: none; -ms-overflow-style: none; }
+        .overflow::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-light flex h-screen">
+
+    <!-- Sidebar Navigation -->
+<div id="sidebar" 
+     class="sidebar fixed lg:static inset-y-0 left-0 transform -translate-x-full lg:translate-x-0 
+            bg-white w-64 h-screen border-r border-border flex flex-col justify-between transition-transform duration-300 z-50">
+
+    <div>
+        <!-- Logo -->
+        <div class="p-6 border-b border-border flex items-center space-x-3">
+            <div class="w-10 h-10 bg-gradient-to-r from-primary to-green-600 rounded-xl flex items-center justify-center">
+                <i class="fas fa-coins text-white text-lg"></i>
+            </div>
+            <span class="text-xl font-bold text-dark">Cashly</span>
+        </div>
+
+        <!-- User Profile -->
+        <div class="p-4 border-b border-border flex items-center space-x-3">
+            {% if user.profile.avatar %}
+                <img src="{{ user.profile.avatar.url }}" 
+                     alt="{{ user.get_full_name|default:user.username }}" 
+                     class="w-12 h-12 rounded-full object-cover border border-border">
+            {% else %}
+                <div class="w-12 h-12 bg-gradient-to-r from-primary to-green-600 rounded-full flex items-center justify-center">
+                    <span class="text-white font-semibold text-lg">
+                        {{ user.first_name|first|default:user.username|first|upper }}
+                    </span>
+                </div>
+            {% endif %}
+            <div>
+                <p class="font-medium text-dark text-sm">{{ user.first_name|default:user.username }}</p>
+                <p class="text-secondary text-xs">
+                    {% if user.socialaccount_set.all %} Google Account {% else %} Email Account {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <!-- Navigation (role dependent) -->
+        <nav class="p-4 space-y-2">
+            <!-- USER MODE LINKS -->
+            <div id="user-links" class="{% if request.session.role == 'agent' %}hidden{% endif %}">
+                <a href="{% url 'dashboard' %}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group 
+                          {% if request.path == '/auth/dashboard/' %}active-nav{% else %}text-secondary hover:bg-gray-50 hover:text-dark{% endif %}">
+                    <i class="fas fa-home w-6 text-center"></i>
+                    <span class="font-medium">Dashboard</span>
+                </a>
+                <a href="{% url 'wallet:overview' %}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group 
+                          {% if request.path == '/wallet/overview/' %}active-nav{% else %}text-secondary hover:bg-gray-50 hover:text-dark{% endif %}">
+                    <i class="fas fa-wallet w-6 text-center"></i>
+                    <span>My Wallet</span>
+                </a>
+                <a href="{% url 'wallet:send' %}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group 
+                          {% if request.path == '/wallet/send/' %}active-nav{% else %}text-secondary hover:bg-gray-50 hover:text-dark{% endif %}">
+                    <i class="fas fa-paper-plane w-6 text-center"></i>
+                    <span>Send Money</span>
+                </a>
+                <a href="{% url 'wallet:history' %}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group 
+                          {% if request.path == '/wallet/history/' %}active-nav{% else %}text-secondary hover:bg-gray-50 hover:text-dark{% endif %}">
+                    <i class="fas fa-history w-6 text-center"></i>
+                    <span>Transactions</span>
+                </a>
+                <a href="{% url 'payments:users_request_list' %}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group 
+                          {% if request.path == '/payments/requests/' %}active-nav{% else %}text-secondary hover:bg-gray-50 hover:text-dark{% endif %}">
+                    <i class="fas fa-history w-6 text-center"></i>
+                    <span>My Requests</span>
+                </a>
+            </div>
+
+            {% if user.is_staff or user.is_superuser %}
+            <a href="/admin/" 
+               class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group 
+                      {% if request.path|slice:":7" == '/admin/' %}active-nav{% else %}text-secondary hover:bg-gray-50 hover:text-dark{% endif %}">
+                <i class="fas fa-cog w-6 text-center"></i>
+                <span>Admin Panel</span>
+            </a>
+            {% endif %}
+        </nav>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="p-4 border-t border-border space-y-2">
+        <!-- AGENT MODE LINKS -->
+        {% if user.profile.is_agent %}
+            <div id="agent-links">
+                {% if request.session.role == 'agent' %}
+                    <!-- If currently in agent mode, show switch back to user -->
+                    <a href="{% url 'switch_to_user' %}" 
+                    class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group text-blue-600 hover:bg-blue-50">
+                        <i class="fas fa-user w-6 text-center"></i>
+                        <span class="font-medium">Switch to User Mode</span>
+                    </a>
+                {% else %}
+                    <!-- If in user mode, show switch to agent -->
+                    <a href="{% url 'agents:dashboard' %}" 
+                    class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group text-green-600 hover:bg-green-50">
+                        <i class="fas fa-briefcase w-6 text-center"></i>
+                        <span class="font-medium">Switch to Agent Mode</span>
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <a href="{% url 'settings' %}" class="flex items-center space-x-3 p-3 rounded-lg text-secondary hover:bg-gray-50 hover:text-dark transition-all duration-200 group">
+            <i class="fas fa-cog text-gray-500 w-6 text-center"></i>
+            <span>Settings</span>
+        </a>
+        <a href="#help" class="flex items-center space-x-3 p-3 rounded-lg text-secondary hover:bg-gray-50 hover:text-dark transition-all duration-200 group">
+            <i class="fas fa-question-circle text-gray-500 w-6 text-center"></i>
+            <span>Help & Support</span>
+        </a>
+        {% if not user.profile.is_agent %}
+        <a href="{% url 'agents:become_agent' %}" 
+           class="flex items-center px-4 py-2 text-sm text-secondary hover:text-primary hover:bg-gray-50 rounded-lg transition">
+            <i class="fas fa-user-tie mr-2"></i>
+            Become an Agent
+        </a>
+        {% endif %}
+        <a href="javascript:void(0);" onclick="openLogoutModal('{{ user.first_name|default:user.username }}')" 
+           class="flex items-center space-x-3 p-3 rounded-lg text-red-600 hover:bg-red-50 transition-all duration-200 group">
+            <i class="fas fa-sign-out-alt text-red-500 w-6 text-center"></i>
+            <span>Logout</span>
+        </a>
+    </div>
+</div>
+
+
+
+
+    <!-- Overlay (mobile only) -->
+    <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden z-40 lg:hidden" onclick="toggleMobileSidebar()"></div>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- Top Header -->
+        <header class="bg-white border-b border-border">
+            <div class="p-4 sm:p-6">
+                <!-- Top Row: Mobile Actions -->
+                <div class="flex items-center justify-between mb-4 lg:hidden">
+                    <!-- Mobile Menu -->
+                    <button onclick="toggleMobileSidebar()" 
+                            class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                        <i class="fas fa-bars text-dark"></i>
+                    </button>
+
+                    <div class="flex items-center space-x-3">
+                        <!-- Notifications Dropdown Trigger -->
+                        <div class="relative">
+                            <button onclick="toggleNotifications()" 
+                                class="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center relative">
+                                <i class="fas fa-bell text-secondary"></i>
+                                {% if unread_count > 0 %}
+                                    <span class="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full"></span>
+                                {% endif %}
+                            </button>
+                        </div>
+
+                        <!-- Add Money -->
+                        <a href="{% url 'payments:start_deposit' %}" 
+                        class="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition duration-200 flex items-center text-sm sm:text-base">
+                            <i class="fas fa-plus mr-2"></i>Add Money
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Bottom Row: Title + Actions -->
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                    <!-- Title + Subtitle -->
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-bold text-dark">
+                            {% block page_title %}Dashboard{% endblock %}
+                        </h1>
+                        <p class="text-secondary mt-1 text-sm sm:text-base">
+                            {% block page_subtitle %}Welcome to your banking dashboard{% endblock %}
+                        </p>
+                    </div>
+
+                    <!-- Right Actions (desktop) -->
+                    <div class="hidden lg:flex items-center space-x-4">
+                        <!-- Notifications Dropdown Trigger -->
+                        <div class="relative">
+                            <button onclick="toggleNotifications()" 
+                                class="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center relative">
+                                <i class="fas fa-bell text-secondary"></i>
+                                {% if unread_count > 0 %}
+                                    <span class="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full"></span>
+                                {% endif %}
+                            </button>
+                        </div>
+
+                        <!-- Add Money -->
+                        <a href="{% url 'payments:start_deposit' %}" 
+                        class="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition duration-200 flex items-center">
+                            <i class="fas fa-plus mr-2"></i>Add Money
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ONE Dropdown (works for both mobile + desktop) -->
+            <div id="notificationDropdown" 
+                class="hidden absolute mt-2 w-80 max-w-[95vw] bg-white rounded-lg shadow-lg border border-gray-200 z-50
+                    left-1/2 -translate-x-1/2
+                    lg:right-6 lg:left-auto lg:translate-x-0">
+                <div class="p-3 border-b font-semibold text-dark">Notifications</div>
+                <ul class="max-h-64 overflow">
+                    {% for notif in request.user.user_notifications.all|slice:":5" %}
+                        <li class="px-3 py-2 hover:bg-gray-50 border-b">
+                            <a href="{% url 'mark_notification_as_read' notif.id %}" class="block text-sm">
+                                <p class="font-medium {% if not notif.is_read %}text-dark{% else %}text-gray-500{% endif %}">
+                                    {{ notif.title }}
+                                </p>
+                                <p class="text-xs text-gray-400">{{ notif.created_at|date:"M d, Y H:i" }}</p>
+                            </a>
+                        </li>
+                    {% empty %}
+                        <li class="px-3 py-4 text-center text-gray-500 text-sm">No notifications yet.</li>
+                    {% endfor %}
+                </ul>
+                <div class="p-2 text-center">
+                    <a href="{% url 'notifications_list' %}" class="text-primary text-sm hover:underline">View all</a>
+                </div>
+            </div>
+        </header>
+
+
+
+        <!-- Messages/Alerts -->
+        {% if messages %}
+        <div class="mx-6 mt-4">
+            <div class="space-y-2" id="auto-hide-messages">
+                {% for message in messages %}
+                <div class="message-item p-4 rounded-lg border font-medium
+                    {% if message.tags == 'error' %}bg-red-50 text-red-700 border-red-200
+                    {% elif message.tags == 'success' %}bg-green-50 text-green-700 border-green-200
+                    {% elif message.tags == 'warning' %}bg-yellow-50 text-yellow-700 border-yellow-200
+                    {% else %}bg-blue-50 text-blue-700 border-blue-200{% endif %}">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <i class="fas 
+                                {% if message.tags == 'error' %}fa-exclamation-circle
+                                {% elif message.tags == 'success' %}fa-check-circle
+                                {% elif message.tags == 'warning' %}fa-exclamation-triangle
+                                {% else %}fa-info-circle{% endif %} mr-3"></i>
+                            {{ message }}
+                        </div>
+                        <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        <!-- End Messages/Alerts -->
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow p-4">
+            <div class="h-full overflow pr-2">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Logout Modal -->
+    <div id="logoutModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
+            <h2 class="text-lg font-semibold text-dark mb-4">Confirm Logout</h2>
+            <p class="text-secondary mb-6">Are you sure you want to log out, <span class="font-semibold" id="logoutUserName"></span>?</p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeLogoutModal()" class="px-4 py-2 rounded-lg bg-gray-200 text-dark hover:bg-gray-300">Cancel</button>
+                <a href="{% url 'logout' %}" class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        function toggleNotifications() {
+            document.getElementById("notificationDropdown").classList.toggle("hidden");
+        }
+
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById("sidebar");
+            const overlay = document.getElementById("sidebarOverlay");
+            if (sidebar.classList.contains("-translate-x-full")) {
+                sidebar.classList.remove("-translate-x-full");
+                overlay.classList.remove("hidden");
+            } else {
+                sidebar.classList.add("-translate-x-full");
+                overlay.classList.add("hidden");
+            }
+        }
+
+        function openLogoutModal(username) {
+            document.getElementById("logoutUserName").textContent = username;
+            document.getElementById("logoutModal").classList.remove("hidden");
+        }
+
+        function closeLogoutModal() {
+            document.getElementById("logoutModal").classList.add("hidden");
+        }
+    </script>
+
+    <script>
+        // Auto-hide messages after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const messages = document.querySelectorAll('main > .mx-6 > .space-y-2 > div');
+                messages.forEach(function(message) {
+                    setTimeout(function() {
+                        message.style.opacity = '0';
+                        message.style.transition = 'opacity 0.3s ease';
+                        setTimeout(() => message.remove(), 300);
+                    }, 3000);
+                });
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const messages = document.querySelectorAll('.message-item');
+            
+            messages.forEach(function(message) {
+                const progressBar = message.querySelector('.progress-bar');
+                
+                // Animate progress bar
+                let width = 100;
+                const interval = setInterval(function() {
+                    if (width <= 0) {
+                        clearInterval(interval);
+                        message.style.opacity = '0';
+                        message.style.transform = 'translateX(-100%)';
+                        setTimeout(() => message.remove(), 500);
+                    } else {
+                        width -= 100 / (3000 / 50); // 3 seconds = 3000ms
+                        progressBar.style.width = width + '%';
+                    }
+                }, 50);
+                
+                // Also hide on click anywhere on the message
+                message.addEventListener('click', function() {
+                    clearInterval(interval);
+                    message.style.opacity = '0';
+                    message.style.transform = 'translateX(-100%)';
+                    setTimeout(() => message.remove(), 500);
+                });
+            });
+        });
+    </script>
+
+    <script>
+        function toggleNotifications() {
+            const dropdown = document.getElementById("notificationDropdown");
+            dropdown.classList.toggle("hidden");
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener("click", function(event) {
+            const dropdown = document.getElementById("notificationDropdown");
+            const bellButton = event.target.closest("button[onclick='toggleNotifications()']");
+
+            // If dropdown is open, and click is outside both bell & dropdown → close it
+            if (!dropdown.classList.contains("hidden") &&
+                !dropdown.contains(event.target) &&
+                !bellButton) {
+                dropdown.classList.add("hidden");
+            }
+        });
+    </script>
+
+
+</body>
+</html>

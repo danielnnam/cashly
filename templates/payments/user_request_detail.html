@@ -1,0 +1,52 @@
+<!-- payments/user_request_detail.html -->
+{% extends "dashboard/base.html" %}
+{% block title %}Request Detail - Cashly{% endblock %}
+
+{% block content %}
+<div class="bg-white p-6 rounded-xl border shadow-sm space-y-6">
+
+    <h2 class="text-lg font-semibold">Request Details</h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <p><span class="text-secondary">Reference:</span> {{ request_obj.reference }}</p>
+        <p><span class="text-secondary">Type:</span> {{ request_obj.transaction_type }}</p>
+        <p><span class="text-secondary">Amount:</span> ₦{{ request_obj.amount|floatformat:2 }}</p>
+        <p><span class="text-secondary">Status:</span> {{ request_obj.status|title }}</p>
+        <p><span class="text-secondary">Created:</span> {{ request_obj.created_at|date:"M d, Y H:i" }}</p>
+    </div>
+
+    <!-- If it's a deposit and an agent is assigned, show agent details -->
+    {% if request_obj.transaction_type == "deposit" and request_obj.agent %}
+    <div class="bg-gray-50 p-4 rounded-lg border mt-4">
+        <p class="font-medium text-dark mb-2">Agent Bank Details</p>
+        <p class="text-sm">Bank: <span class="font-semibold">{{ request_obj.agent.profile.bank_name }}</span></p>
+        <p class="text-sm">Account Number: <span class="font-semibold">{{ request_obj.agent.profile.account_number }}</span></p>
+        <p class="text-sm">Account Name: <span class="font-semibold">{{ request_obj.agent.profile.account_name }}</span></p>
+    </div>
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="mt-4 flex flex-wrap items-center gap-3">
+        {% if request_obj.status == "pending" %}
+            <a href="#"
+               class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700">
+               Cancel Request
+            </a>
+        {% endif %}
+
+        {% if request_obj.transaction_type == "deposit" and request_obj.status == "accepted" %}
+            <form method="post" action="{% url 'payments:mark_as_paid_request' request_obj.reference %}">
+                {% csrf_token %}
+                <button type="submit"
+                        class="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90">
+                    I Have Paid
+                </button>
+            </form>
+        {% endif %}
+
+        {% if request_obj.status == "completed" %}
+            <p class="text-green-600 font-medium">✅ Payment confirmed. Your deposit was successful.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

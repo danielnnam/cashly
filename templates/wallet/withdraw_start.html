@@ -1,0 +1,20 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Withdraw Funds - Cashly{% endblock %}
+{% block page_title %}Withdraw Funds{% endblock %}
+{% block page_subtitle %}Send money from your wallet to your bank{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto bg-white p-6 rounded-xl shadow-sm border border-border">
+    <form method="POST" class="space-y-4">
+        {% csrf_token %}
+        <div>
+            <label class="block text-sm font-medium text-secondary mb-1">Amount (₦)</label>
+            <input type="number" name="amount" step="0.01" class="w-full p-2 border rounded-lg focus:ring-primary focus:border-primary">
+        </div>
+
+        <button type="submit" class="w-full py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary/90">
+            Continue
+        </button>
+    </form>
+</div>
+{% endblock %}

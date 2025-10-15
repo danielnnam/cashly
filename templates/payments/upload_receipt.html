@@ -1,0 +1,16 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Upload Receipt{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto bg-white p-6 rounded-lg shadow">
+    <h2 class="text-lg font-semibold mb-4">Upload Receipt</h2>
+    <form method="post" enctype="multipart/form-data" class="space-y-4">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" 
+            class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+            Upload
+        </button>
+    </form>
+</div>
+{% endblock %}
