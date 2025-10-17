@@ -11,6 +11,7 @@ from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from accounts.models import Profile
 from django.contrib.auth import login, logout, authenticate
+from admin_dashboard.utils import log_activity  
 
 # Create your views here.
 
@@ -65,11 +66,19 @@ def become_agent(request):
             # Prevent duplicate if already pending/approved
             if existing_app and existing_app.status in ["pending", "approved"]:
                 messages.warning(request, "You already have an active application.")
-                return redirect("become_agent")
+                return redirect("agents:become_agent")
 
             agent_app = form.save(commit=False)
             agent_app.user = request.user
             agent_app.save()
+            log_activity(
+                user=request.user,
+                title="New Agent Application",
+                description=f"{request.user.username} submitted a new agent application.",
+                type="agent_application",
+                status="pending",
+                icon="id-card"
+            )
             messages.success(request, "Your application has been submitted successfully!")
             return redirect("agents:become_agent")
     else:
