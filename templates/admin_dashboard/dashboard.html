@@ -1,11 +1,292 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-    <p>Admin Dashboard</p>
-</body>
-</html>
+{% extends 'admin_dashboard/base.html' %}
+{% load humanize %}
+
+{% block page_title %}Admin Dashboard{% endblock %}
+{% block page_subtitle %}System overview and management console{% endblock %}
+
+{% block content %}   
+<div class="h-full overflow pr-2">
+    <!-- System Overview Stats -->
+    <div class="space-y-6">
+        <!-- Quick Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Total Users -->
+            <div class="bg-white rounded-xl border border-border p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-secondary text-sm font-medium">Total Users</p>
+                        <h3 class="text-2xl font-bold text-dark mt-2">{{ total_users|intcomma }}</h3>
+                        <p class="text-green-600 text-xs mt-1 flex items-center">
+                            <i class="fas fa-arrow-up mr-1"></i>Live Count
+                        </p>
+                    </div>
+                    <div class="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
+                        <i class="fas fa-users text-blue-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Agents -->
+            <div class="bg-white rounded-xl border border-border p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-secondary text-sm font-medium">Active Agents</p>
+                        <h3 class="text-2xl font-bold text-dark mt-2">{{ active_agents|intcomma }}</h3>
+                        <p class="text-green-600 text-xs mt-1 flex items-center">
+                            <i class="fas fa-user-check mr-1"></i>Approved Agents
+                        </p>
+                    </div>
+                    <div class="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user-tie text-green-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Transactions -->
+            <div class="bg-white rounded-xl border border-border p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-secondary text-sm font-medium">Transactions</p>
+                        <h3 class="text-2xl font-bold text-dark mt-2">{{ total_transactions|intcomma }}</h3>
+                        <p class="text-green-600 text-xs mt-1 flex items-center">
+                            <i class="fas fa-exchange-alt mr-1"></i>₦{{ total_volume|floatformat:2|intcomma }} volume
+                        </p>
+                    </div>
+                    <div class="w-12 h-12 bg-purple-50 rounded-full flex items-center justify-center">
+                        <i class="fas fa-money-bill-wave text-purple-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Revenue -->
+            <div class="bg-white rounded-xl border border-border p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-secondary text-sm font-medium">System Revenue</p>
+                        <h3 class="text-2xl font-bold text-dark mt-2">₦{{ system_revenue|floatformat:2|intcomma }}</h3>
+                        <p class="text-green-600 text-xs mt-1 flex items-center">
+                            <i class="fas fa-chart-line mr-1"></i>Platform Share
+                        </p>
+                    </div>
+                    <div class="w-12 h-12 bg-yellow-50 rounded-full flex items-center justify-center">
+                        <i class="fas fa-chart-bar text-yellow-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Charts and Detailed Stats -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Transaction Volume Chart -->
+            <div class="bg-white rounded-xl border border-border lg:col-span-2">
+                <div class="p-6 border-b border-border">
+                    <h2 class="text-lg font-semibold text-dark">Transaction Volume</h2>
+                    <p class="text-secondary text-sm mt-1">Last 30 days performance</p>
+                </div>
+                <div class="p-6">
+                    <canvas id="transactionChart" height="250"></canvas>
+                </div>
+            </div>
+
+            <!-- System Health -->
+            <div class="bg-white rounded-xl border border-border">
+                <div class="p-6 border-b border-border">
+                    <h2 class="text-lg font-semibold text-dark">System Health</h2>
+                    <p class="text-secondary text-sm mt-1">Service status & performance</p>
+                </div>
+                <div class="p-6 space-y-4">
+                    <!-- Health Item -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span class="text-sm text-dark">API Services</span>
+                        </div>
+                        <span class="text-green-600 text-sm font-medium">Operational</span>
+                    </div>
+                    
+                    <!-- Health Item -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span class="text-sm text-dark">Database</span>
+                        </div>
+                        <span class="text-green-600 text-sm font-medium">Healthy</span>
+                    </div>
+                    
+                    <!-- Health Item -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                            <span class="text-sm text-dark">Payment Gateway</span>
+                        </div>
+                        <span class="text-yellow-600 text-sm font-medium">Degraded</span>
+                    </div>
+                    
+                    <!-- Health Item -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span class="text-sm text-dark">Notification System</span>
+                        </div>
+                        <span class="text-green-600 text-sm font-medium">Operational</span>
+                    </div>
+                    
+                    <!-- Health Item -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span class="text-sm text-dark">Security Services</span>
+                        </div>
+                        <span class="text-green-600 text-sm font-medium">Active</span>
+                    </div>
+                    
+                    <!-- Uptime Stats -->
+                    <div class="pt-4 border-t border-border">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-secondary">System Uptime</span>
+                            <span class="font-medium text-dark">99.92%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                            <div class="bg-green-600 h-2 rounded-full" style="width: 99.92%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity and User Management -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Recent Activity -->
+            <div class="bg-white rounded-xl border border-border">
+                <div class="p-6 border-b border-border">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-semibold text-dark">Recent Activity</h2>
+                        <a href="#" class="text-primary text-sm font-medium hover:text-green-700">View All</a>
+                    </div>
+                </div>
+                <div class="p-6 h-[400px] overflow-y-auto">
+                    <div id="recent-activity" class="space-y-4">
+                    <p class="text-sm text-gray-400 text-center">Loading activities...</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- User Management -->
+            <div class="bg-white rounded-xl border border-border">
+                <div class="p-6 border-b border-border">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-semibold text-dark">User Management</h2>
+                        <a href="{% url 'admin:auth_user_changelist' %}" class="text-primary text-sm font-medium hover:text-green-700">
+                            Manage Users
+                        </a>
+                    </div>
+                </div>
+
+                <div class="p-6 overflow-x-auto">
+                    <table id="userTable" class="min-w-full text-sm text-left divide-y">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr>
+                                <th class="px-4 py-3 font-semibold text-gray-600 uppercase tracking-wider">User ID</th>
+                                <th class="px-4 py-3 font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                                <th class="px-4 py-3 font-semibold text-gray-600 uppercase tracking-wider">Email</th>
+                                <th class="px-4 py-3 font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                                <th class="px-4 py-3 font-semibold text-gray-600 uppercase tracking-wider text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            {% for user in users %}
+                                {% with profile=user.profile %}
+                                    <tr class="hover:bg-gray-50 transition">
+                                        <td class="px-4 py-3 font-medium text-gray-800">#USR-{{ user.id }}</td>
+                                        <td class="px-4 py-3 text-gray-700">{{ user.get_full_name|default:user.username }}</td>
+                                        <td class="px-4 py-3 text-gray-500">{{ user.email }}</td>
+                                        <td class="px-4 py-3">
+                                            {% if profile.is_suspended %}
+                                                <span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs">Suspended</span>
+                                            {% elif profile.is_agent %}
+                                                <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Agent</span>
+                                            {% else %}
+                                                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs">Active</span>
+                                            {% endif %}
+                                        </td>
+
+                                        <td class="px-4 py-3 text-center">
+                                            <a href="{% url 'admin:auth_user_change' user.id %}" class="text-primary hover:text-green-700">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endwith %}
+                            {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-gray-400 text-sm">No users found</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- System Alerts -->
+        <div class="bg-white rounded-xl border border-border">
+            <div class="p-6 border-b border-border">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-dark">System Alerts</h2>
+                    <div class="flex space-x-2">
+                        <button class="bg-white border border-border text-dark px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition duration-200 text-sm">
+                            <i class="fas fa-check-circle mr-2"></i>Mark All Read
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
+                    <!-- Alert Item -->
+                    <div class="flex items-start p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
+                        <i class="fas fa-exclamation-triangle text-yellow-600 mt-1 mr-3"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-dark">Payment Gateway Latency</p>
+                            <p class="text-secondary text-sm mt-1">Increased response time detected on payment processing services. Monitoring required.</p>
+                            <p class="text-gray-400 text-xs mt-2">Alert triggered 45 minutes ago</p>
+                        </div>
+                        <button class="text-secondary hover:text-dark ml-4">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Alert Item -->
+                    <div class="flex items-start p-4 border border-blue-200 bg-blue-50 rounded-lg">
+                        <i class="fas fa-info-circle text-blue-600 mt-1 mr-3"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-dark">Scheduled Maintenance</p>
+                            <p class="text-secondary text-sm mt-1">System maintenance scheduled for Saturday, 2:00 AM - 4:00 AM. Expected downtime: 30 minutes.</p>
+                            <p class="text-gray-400 text-xs mt-2">Scheduled 2 days ago</p>
+                        </div>
+                        <button class="text-secondary hover:text-dark ml-4">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Alert Item -->
+                    <div class="flex items-start p-4 border border-red-200 bg-red-50 rounded-lg">
+                        <i class="fas fa-shield-alt text-red-600 mt-1 mr-3"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-dark">Security Alert</p>
+                            <p class="text-secondary text-sm mt-1">Multiple failed login attempts detected from unusual location. Account temporarily locked.</p>
+                            <p class="text-gray-400 text-xs mt-2">Alert triggered 5 hours ago</p>
+                        </div>
+                        <button class="text-secondary hover:text-dark ml-4">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+            
