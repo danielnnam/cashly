@@ -86,11 +86,18 @@ def login_view(request):
                 timestamp=timezone.now()
             )
 
-            # Redirect
+            # ✅ Smart redirect logic
             next_url = request.GET.get('next')
             if next_url:
                 return redirect(next_url)
+
+            # 🔹 If admin/staff, go to custom admin dashboard
+            if user.is_staff or user.is_superuser:
+                return redirect('admin_dashboard:admin_dashboard')
+
+            # 🔹 Else, go to user dashboard
             return redirect('dashboard')
+            
         else:
             messages.error(request, 'Invalid email or password. Please try again.')
 
