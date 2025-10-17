@@ -13,6 +13,7 @@ from django.contrib.auth import get_user_model
 
 from accounts.models import Profile
 from accounts.utils import create_notification
+from admin_dashboard.utils import log_activity
 from wallet.models import Wallet
 from .models import DepositRequest, WithdrawalRequest
 from .forms import (
@@ -179,6 +180,17 @@ def create_deposit(request):
         reference=DepositRequest.generate_reference(wallet),
         status="pending"
     )
+    log_activity(
+        user=request.user,
+        title="Deposit Request Created",
+        description=f"₦{Decimal(amount):,.2f} deposit request sent to agent {agent_profile.user.username}",
+        type="transaction",
+        status="pending",
+        icon="arrow-down"
+    )
+
+
+
 
     messages.success(request, f"Deposit request {dep.reference} created. Await agent acceptance.")
     return redirect("payments:user_deposit_detail", reference=dep.reference)
@@ -339,6 +351,16 @@ def create_withdrawal(request):
         reference=WithdrawalRequest.generate_reference(wallet),
         status="pending"
     )
+    log_activity(
+        user=request.user,
+        title="Withdrawal Request Created",
+        description=f"Withdrawal of ₦{amount_dec:,} requested with agent {agent_profile.user.username}",
+        type="transaction",
+        status="pending",
+        icon="arrow-up"
+    )
+
+
 
     create_notification(w.user, "Withdrawal Requested", f"Your withdrawal {w.reference} is pending agent acceptance.")
     messages.success(request, f"Withdrawal request {w.reference} created. Await agent acceptance.")
@@ -457,6 +479,16 @@ def agent_take_request(request, reference):
         "Agent Accepted",
         f"{request.user.username} accepted your request {req.reference}"
     )
+    log_activity(
+        user=req.user,
+        title="Agent Accepted Deposit Request",
+        description=f"Agent {request.user.username} accepted deposit request {req.reference}",
+        type="deposit",
+        status="pending",
+        icon="handshake"
+    )
+
+
 
     messages.success(request, "You accepted the request — countdown started.")
     return redirect("payments:agent_request_detail", reference=req.reference)
@@ -540,6 +572,16 @@ def agent_mark_withdrawal_paid(request, reference):
         messages.success(request, "Withdrawal marked as paid successfully.")
     else:
         messages.error(request, "Failed to mark withdrawal as paid.")
+
+    log_activity(
+        user=withdrawal.user,
+        actor=request.user,
+        action="Agent marked withdrawal as paid",
+        description=f"Agent {request.user.username} marked {withdrawal.reference} as paid",
+        reference=withdrawal.reference,
+        activity_type="withdrawal"
+    )
+
 
     return redirect(reverse("payments:agent_request_detail", args=[reference]))
 
