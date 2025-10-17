@@ -468,3 +468,5 @@ class Escrow(models.Model):
 
     def __str__(self):
         return f"Escrow {self.deposit_request.reference} - ₦{self.amount} ({self.status})"
+    
+
