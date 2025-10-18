@@ -24,6 +24,7 @@ class AgentApplication(models.Model):
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
+    decline_reason = models.TextField(blank=True, null=True)
 
     # ✅ New field for professional reference ID
     reference = models.CharField(max_length=30, unique=True, editable=False)
