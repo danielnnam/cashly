@@ -91,7 +91,7 @@
                     <ul class="space-y-3">
                         {% for req in recent_requests %}
                         <li class="p-4 bg-white shadow-sm hover:shadow-md rounded-lg transition flex items-center justify-between cursor-pointer"
-                            onclick="window.location.href='{% url 'payments:agent_request_detail' req.reference %}'">
+                            data-url="{% url 'payments:agent_request_detail' req.reference %}">
 
                             <div class="flex items-center space-x-4">
                                 <div class="w-10 h-10 rounded-full flex items-center justify-center
@@ -207,4 +207,13 @@
         </div>
     </div>
 </div>
+
+<script>
+document.querySelectorAll('[data-url]').forEach(item => {
+    item.addEventListener('click', () => {
+        window.location.href = item.getAttribute('data-url');
+    });
+});
+</script>
+
 {% endblock %}
