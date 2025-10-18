@@ -573,15 +573,14 @@ def agent_mark_withdrawal_paid(request, reference):
     else:
         messages.error(request, "Failed to mark withdrawal as paid.")
 
+    # Adjusted log_activity call
     log_activity(
-        user=withdrawal.user,
-        actor=request.user,
-        action="Agent marked withdrawal as paid",
-        description=f"Agent {request.user.username} marked {withdrawal.reference} as paid",
+        user=request.user,  # the actor performing the action
+        action="Marked withdrawal as paid",
+        description=f"Agent {request.user.username} marked withdrawal {withdrawal.reference} as paid.",
         reference=withdrawal.reference,
         activity_type="withdrawal"
     )
-
 
     return redirect(reverse("payments:agent_request_detail", args=[reference]))
 
