@@ -14,6 +14,19 @@ class Profile(models.Model):
     phone = models.CharField(max_length=15, blank=True, null=True)
     avatar = models.ImageField(upload_to=user_avatar_path, blank=True, null=True)
     is_agent = models.BooleanField(default=False)   # ✅ added this field
+    is_suspended = models.BooleanField(default=False)
+    suspension_reason = models.TextField(blank=True, null=True)
+    agent_response = models.TextField(blank=True, null=True)
+    suspension_appeal = models.TextField(blank=True, null=True)  
+    appeal_status = models.CharField(
+        max_length=20,
+        choices=[
+            ("none", "No Appeal"),
+            ("pending", "Pending Review"),
+            ("resolved", "Resolved"),
+        ],
+        default="none"
+    )
 
     # Payment details for deposits
     bank_name = models.CharField(max_length=100, blank=True, null=True)
