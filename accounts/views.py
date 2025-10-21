@@ -209,7 +209,7 @@ def google_callback(request):
         return complete_social_login(request, login)
     except Exception as e:
         messages.error(request, 'Google authentication failed.')
-        return redirect('login')
+        return redirect('login_view')
 
 
 
@@ -345,10 +345,24 @@ def switch_to_user(request):
     request.session['role'] = 'user'
     return redirect('dashboard')  # normal user dashboard
 
+
 @login_required
 def switch_to_agent(request):
+    profile = request.user.profile
+
+    # Check if the user is actually an agent
+    if not profile.is_agent:
+        messages.error(request, "You are not an approved agent.")
+        return redirect('dashboard')
+
+    # Check if suspended
+    if profile.is_suspended:
+        messages.warning(request, "Your agent account is suspended.")
+        return redirect('agents:suspension_notice')
+
+    # All good — switch role
     request.session['role'] = 'agent'
-    return redirect('agents:dashboard')  # agent dashboard
+    return redirect('agents:dashboard')
 
 def logout_view(request):
     """Simple logout view"""
