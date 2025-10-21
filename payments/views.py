@@ -121,8 +121,15 @@ def choose_agent(request):
     if not amount:
         return redirect("payments:start_deposit")
 
-    agents = Profile.objects.filter(is_agent=True).exclude(user=request.user).select_related("user")
+    # ✅ Only show agents that are active, approved, and not suspended
+    agents = (
+        Profile.objects
+        .filter(is_agent=True, is_suspended=False, user__is_active=True)
+        .exclude(user=request.user)
+        .select_related("user")
+    )
 
+    # Calculate completion rates for each agent
     for agent in agents:
         completed_deposits = DepositRequest.objects.filter(agent=agent.user, status="completed").count()
         completed_withdrawals = WithdrawalRequest.objects.filter(agent=agent.user, status="completed").count()
@@ -141,6 +148,7 @@ def choose_agent(request):
         "amount": amount,
         "agents": agents,
     })
+
 
 
 @login_required
@@ -300,8 +308,15 @@ def choose_agent_withdrawal(request):
     if not amount:
         return redirect("payments:start_withdrawal")
 
-    agents = Profile.objects.filter(is_agent=True).exclude(user=request.user).select_related("user")
+    # ✅ Only include active, unsuspended, verified agents
+    agents = (
+        Profile.objects
+        .filter(is_agent=True, is_suspended=False, user__is_active=True)
+        .exclude(user=request.user)
+        .select_related("user")
+    )
 
+    # Calculate completion rate for each agent
     for agent in agents:
         completed_deposits = DepositRequest.objects.filter(agent=agent.user, status="completed").count()
         completed_withdrawals = WithdrawalRequest.objects.filter(agent=agent.user, status="completed").count()
