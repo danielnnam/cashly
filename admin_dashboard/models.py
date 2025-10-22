@@ -37,3 +37,19 @@ class ActivityLog(models.Model):
     def time_ago(self):
         from django.utils.timesince import timesince
         return timesince(self.created_at) + " ago"
+
+
+
+class AdminNotification(models.Model):
+    """Notifications visible only to admin users."""
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+    admin_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="admin_notifications")
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.title} - {self.admin_user.username}"
