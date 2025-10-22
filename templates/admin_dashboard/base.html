@@ -101,15 +101,29 @@
                     <span>Users</span>
                 </a>
 
-                <a href="#" class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group text-secondary hover:bg-gray-50 hover:text-dark">
+                <a href="{% url 'admin_dashboard:agents' %}" 
+                class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group
+                {% if '/admin-dashboard/agents/' in request.path %}
+                    active-nav
+                {% else %}
+                    text-secondary hover:bg-gray-50 hover:text-dark
+                {% endif %}">
                     <i class="fas fa-user-tie w-6 text-center"></i>
                     <span>Agents</span>
                 </a>
-                <a href="#" class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group text-secondary hover:bg-gray-50 hover:text-dark">
+
+                <a href="{% url 'admin_dashboard:transactions' %}"
+                class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group 
+                {% if '/admin-dashboard/transactions/' in request.path %}
+                    active-nav
+                {% else %}
+                    text-secondary hover:bg-gray-50 hover:text-dark
+                {% endif %}">
                     <i class="fas fa-exchange-alt w-6 text-center"></i>
                     <span>Transactions</span>
                 </a>
-                <a href="#" class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group text-secondary hover:bg-gray-50 hover:text-dark">
+
+                <a href="{% url 'admin_dashboard:admin_disputes_list' %}" class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group text-secondary hover:bg-gray-50 hover:text-dark">
                     <i class="fas fa-exclamation-circle w-6 text-center"></i>
                     <span>Disputes</span>
                 </a>
@@ -164,7 +178,9 @@
                             <button onclick="toggleNotifications()" 
                                 class="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center relative">
                                 <i class="fas fa-bell text-secondary"></i>
-                                <span class="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full"></span>
+                                {% if admin_unread_count > 0 %}
+                                    <span class="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full"></span>
+                                {% endif %}
                             </button>
                         </div>
                     </div>
@@ -183,26 +199,15 @@
                     </div>
 
                     <!-- Right Actions (desktop) -->
-                    <div class="hidden lg:flex items-center space-x-4 mt-4 lg:mt-0">
-                        <!-- Date Filter -->
-                        <div class="flex items-center space-x-2 bg-white border border-border rounded-lg px-3 py-2">
-                            <i class="fas fa-calendar text-secondary"></i>
-                            <select class="bg-transparent border-none focus:outline-none text-sm">
-                                <option>Last 7 days</option>
-                                <option>Last 30 days</option>
-                                <option>Last 90 days</option>
-                                <option>Custom range</option>
-                            </select>
-                        </div>
-                        
+                    <div class="hidden lg:flex items-center space-x-4 mt-4 lg:mt-0">                        
                         <!-- Notifications Dropdown Trigger -->
-                        <div class="relative">
-                            <button onclick="toggleNotifications()" 
-                                class="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center relative">
-                                <i class="fas fa-bell text-secondary"></i>
+                        <button onclick="toggleNotifications()" 
+                            class="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center relative">
+                            <i class="fas fa-bell text-secondary"></i>
+                            {% if admin_unread_count > 0 %}
                                 <span class="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full"></span>
-                            </button>
-                        </div>
+                            {% endif %}
+                        </button>
                         
                         <!-- Quick Report -->
                         <button class="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition duration-200 flex items-center">
@@ -218,34 +223,22 @@
                     left-1/2 -translate-x-1/2
                     lg:right-6 lg:left-auto lg:translate-x-0">
                 <div class="p-3 border-b font-semibold text-dark">System Notifications</div>
-                <ul class="max-h-64 overflow">
-                    <li class="px-3 py-2 hover:bg-gray-50 border-b">
-                        <a href="#" class="block text-sm">
-                            <p class="font-medium text-dark">New user registration requires approval</p>
-                            <p class="text-xs text-gray-400">Just now</p>
-                        </a>
-                    </li>
-                    <li class="px-3 py-2 hover:bg-gray-50 border-b">
-                        <a href="#" class="block text-sm">
-                            <p class="font-medium text-dark">High-value transaction flagged</p>
-                            <p class="text-xs text-gray-400">10 minutes ago</p>
-                        </a>
-                    </li>
-                    <li class="px-3 py-2 hover:bg-gray-50 border-b">
-                        <a href="#" class="block text-sm">
-                            <p class="font-medium text-dark">System backup completed</p>
-                            <p class="text-xs text-gray-400">1 hour ago</p>
-                        </a>
-                    </li>
-                    <li class="px-3 py-2 hover:bg-gray-50">
-                        <a href="#" class="block text-sm">
-                            <p class="font-medium text-dark">New dispute escalated to admin</p>
-                            <p class="text-xs text-gray-400">Yesterday</p>
-                        </a>
-                    </li>
+                <ul class="max-h-64 overflow-y-auto">
+                    {% for notif in admin_recent_notifications %}
+                        <li class="px-3 py-2 hover:bg-gray-50 border-b">
+                            <a href="{% url 'admin_dashboard:mark_admin_notification_as_read' notif.id %}" class="block text-sm">
+                                <p class="font-medium {% if not notif.is_read %}text-dark{% else %}text-gray-500{% endif %}">
+                                    {{ notif.title }}
+                                </p>
+                                <p class="text-xs text-gray-400">{{ notif.created_at|date:"M d, Y H:i" }}</p>
+                            </a>
+                        </li>
+                    {% empty %}
+                        <li class="px-3 py-4 text-center text-gray-500 text-sm">No notifications yet.</li>
+                    {% endfor %}
                 </ul>
                 <div class="p-2 text-center">
-                    <a href="#" class="text-primary text-sm hover:underline">View all notifications</a>
+                    <a href="{% url 'admin_dashboard:admin_notifications' %}" class="text-primary text-sm hover:underline">View all notifications</a>
                 </div>
             </div>
         </header>
@@ -477,6 +470,10 @@
             setInterval(loadActivities, 15000);
         });
 
+        // notification
+        function toggleNotifications() {
+            document.getElementById('notificationDropdown').classList.toggle('hidden');
+        }
     </script>
 </body>
 </html>
