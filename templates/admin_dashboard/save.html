@@ -1,533 +1,431 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Detail - Admin Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+from django.contrib.auth.decorators import user_passes_test, login_required
+from django.shortcuts import render, redirect, get_object_or_404
+from django.db.models import Sum, Count
+from django.contrib.auth.models import User
+from agents.models import AgentApplication
+from wallet.models import Transaction 
+from decimal import Decimal
+from datetime import timedelta
+from django.http import JsonResponse
+from django.utils import timezone
+from django.contrib.admin.views.decorators import staff_member_required
+from .models import ActivityLog
+from django.db.models import Q
+from django.contrib import messages
+from wallet.models import Wallet
+from accounts.models import Profile, Notification
+from .models import AdminNotification
+
+
+
+def is_admin_user(user):
+    return user.is_staff or user.is_superuser
+
+
+def create_admin_notification(title, message):
+    """Send notification to all admin users."""
+    admins = User.objects.filter(is_staff=True)
+    for admin in admins:
+        Notification.objects.create(user=admin, title=title, message=message)
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def admin_dashboard(request):
+    """Custom Admin Dashboard with live system stats"""
+
+    # Total users
+    total_users = User.objects.count()
+
+    # Active agents (approved ones)
+    active_agents = AgentApplication.objects.filter(status='approved').count()
+
+    # Total transactions and volume
+    total_transactions = Transaction.objects.count()
+    total_volume = Transaction.objects.aggregate(total=Sum('amount'))['total'] or 0
+
+    total_fees =  0
+    system_revenue = Decimal(total_fees) * Decimal('0.6')
+
+    users = (
+        User.objects.select_related("profile")
+        .order_by("-date_joined")[:10]  # Show latest 10 users
+    )
+
+    context = {
+        'total_users': total_users,
+        'active_agents': active_agents,
+        'total_transactions': total_transactions,
+        'total_volume': total_volume,
+        'system_revenue': system_revenue,
+        "users": users,
+    }
+
+    return render(request, "admin_dashboard/dashboard.html", context)
+
+
+@login_required
+def transaction_chart_data(request):
+    """Return last 30 days of transaction volume for Chart.js"""
+    today = timezone.now().date()
+    start_date = today - timedelta(days=29)
+
+    # Prepare daily sums
+    data = []
+    labels = []
+    for i in range(30):
+        day = start_date + timedelta(days=i)
+        total = (
+            Transaction.objects.filter(created_at__date=day)
+            .aggregate(total=Sum('amount'))['total'] or 0
+        )
+        data.append(float(total))
+        labels.append(day.strftime("%b %d"))  # e.g., "Oct 15"
+
+    return JsonResponse({"labels": labels, "data": data})
+
+@login_required
+def log_admin_activity(user, title, description, type="info", status="success", icon="fas fa-info-circle"):
+    """Log activity and send admin notification."""
+    # Create activity log
+    activity = ActivityLog.objects.create(
+        user=user,
+        title=title,
+        description=description,
+        type=type,
+        status=status,
+        icon=icon,
+    )
+
+    # Send notifications to all staff/admins
+    admins = User.objects.filter(is_staff=True)
+    for admin in admins:
+        Notification.objects.create(
+            user=admin,
+            title=f"Admin Activity: {title}",
+            message=description,
+        )
+    return activity
+
+
+@staff_member_required
+@login_required
+def recent_activity(request):
+    """Return JSON of recent activities."""
+    if request.user.is_staff:
+        activities = ActivityLog.objects.select_related("user").order_by("-created_at")[:10]
+    else:
+        activities = ActivityLog.objects.filter(user=request.user).select_related("user").order_by("-created_at")[:10]
+
+    data = [
+        {
+            "id": a.id,
+            "title": a.title,
+            "description": a.description,
+            "type": a.type,
+            "status": a.status,
+            "icon": a.icon,
+            "user": a.user.username if a.user else "System",
+            "time_ago": a.time_ago,
+        }
+        for a in activities
+    ]
+    return JsonResponse({"activities": data})
+
+
+
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def users_list(request):
+    """
+    Display all users in the admin dashboard with profile info.
+    """
+    users = User.objects.select_related('profile').all().order_by('-date_joined')
     
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#059669',
-                        secondary: '#6b7280',
-                        dark: '#111827',
-                        light: '#f8fafc',
-                        border: '#e5e7eb',
-                        danger: '#ef4444',
-                        warning: '#f59e0b',
-                        info: '#3b82f6'
-                    }
-                }
-            }
-        }
-    </script>
+    context = {
+        'users': users
+    }
+    return render(request, 'admin_dashboard/users.html', context)
 
-    <style>
-        .active-nav {
-            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
-            color: white;
-        }
-        .active-nav i { color: white; }
-        .overflow { overflow-y: scroll; scrollbar-width: none; -ms-overflow-style: none; }
-        .overflow::-webkit-scrollbar { display: none; }
-        .status-pending { background: #fef3c7; color: #d97706; }
-        .status-completed { background: #d1fae5; color: #065f46; }
-        .status-disputed { background: #fee2e2; color: #b91c1c; }
-        .status-processing { background: #dbeafe; color: #1e40af; }
-        .status-active { background: #d1fae5; color: #065f46; }
-        .status-suspended { background: #fee2e2; color: #b91c1c; }
-        .status-banned { background: #fee2e2; color: #b91c1c; }
-        .status-pending { background: #fef3c7; color: #d97706; }
-        .status-verified { background: #d1fae5; color: #065f46; }
-    </style>
-</head>
-<body class="bg-light flex h-screen">
 
-    <!-- Sidebar Navigation -->
-    <div id="sidebar" 
-         class="sidebar fixed lg:static inset-y-0 left-0 transform -translate-x-full lg:translate-x-0 
-                bg-white w-64 h-screen border-r border-border flex flex-col justify-between transition-transform duration-300 z-50 overflow">
+@login_required
+@user_passes_test(is_admin_user)
+def user_detail(request, user_id):
+    # Get the user and profile
+    user_obj = get_object_or_404(User.objects.select_related("profile"), pk=user_id)
+    profile = getattr(user_obj, "profile", None)
 
-        <div>
-            <!-- Logo -->
-            <div class="p-6 border-b border-border flex items-center space-x-3">
-                <div class="w-10 h-10 bg-gradient-to-r from-primary to-green-600 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-crown text-white text-lg"></i>
-                </div>
-                <span class="text-xl font-bold text-dark">Cashly Admin</span>
-            </div>
+    # Get the user's wallet (must exist because of your post_save signal)
+    wallet = getattr(user_obj, 'wallet', None)
+    if wallet:
+        wallet.total_deposits = wallet.received_transactions.filter(transaction_type='deposit', status='completed').aggregate(total=Sum('amount'))['total'] or 0
+        wallet.total_withdrawals = wallet.sent_transactions.filter(transaction_type='withdrawal', status='completed').aggregate(total=Sum('amount'))['total'] or 0
 
-            <!-- Admin Profile -->
-            <div class="p-4 border-b border-border flex items-center space-x-3">
-                <div class="w-12 h-12 bg-gradient-to-r from-primary to-green-600 rounded-full flex items-center justify-center">
-                    <span class="text-white font-semibold text-lg">AD</span>
-                </div>
-                <div>
-                    <p class="font-medium text-dark text-sm">Admin User</p>
-                    <p class="text-secondary text-xs">Super Administrator</p>
-                </div>
-            </div>
 
-            <!-- Navigation -->
-            <nav class="p-4 space-y-2">
-                <a href="#" class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group text-secondary hover:bg-gray-50 hover:text-dark">
-                    <i class="fas fa-home w-6 text-center"></i>
-                    <span class="font-medium">Dashboard</span>
-                </a>
-                <a href="#" class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group active-nav">
-                    <i class="fas fa-users w-6 text-center"></i>
-                    <span>Users</span>
-                </a>
-                <a href="#" class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group text-secondary hover:bg-gray-50 hover:text-dark">
-                    <i class="fas fa-user-tie w-6 text-center"></i>
-                    <span>Agents</span>
-                </a>
-                <a href="#" class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group text-secondary hover:bg-gray-50 hover:text-dark">
-                    <i class="fas fa-exchange-alt w-6 text-center"></i>
-                    <span>Transactions</span>
-                </a>
-                <a href="#" class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group text-secondary hover:bg-gray-50 hover:text-dark">
-                    <i class="fas fa-exclamation-circle w-6 text-center"></i>
-                    <span>Disputes</span>
-                </a>
-                <a href="#" class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group text-secondary hover:bg-gray-50 hover:text-dark">
-                    <i class="fas fa-cog w-6 text-center"></i>
-                    <span>Settings</span>
-                </a>
-            </nav>
-        </div>
+    # Fetch transactions for this wallet (both sent and received)
+    transactions = wallet.get_transaction_history() if wallet else []
 
-        <!-- Bottom Navigation -->
-        <div class="p-4 border-t border-border space-y-2">
-            <a href="#" class="flex items-center space-x-3 p-3 rounded-lg text-secondary hover:bg-gray-50 hover:text-dark transition-all duration-200 group">
-                <i class="fas fa-user-shield text-gray-500 w-6 text-center"></i>
-                <span>Admin Settings</span>
-            </a>
-            <a href="#" class="flex items-center space-x-3 p-3 rounded-lg text-red-600 hover:bg-red-50 transition-all duration-200 group">
-                <i class="fas fa-sign-out-alt text-red-500 w-6 text-center"></i>
-                <span>Logout</span>
-            </a>
-        </div>
-    </div>
+    # Recent activity logs
+    activities = ActivityLog.objects.filter(user=user_obj).order_by("-created_at")[:10]
 
-    <!-- Overlay (mobile only) -->
-    <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden z-40 lg:hidden" onclick="toggleMobileSidebar()"></div>
+    context = {
+        "user_obj": user_obj,
+        "profile": profile,
+        "wallet": wallet,
+        "transactions": transactions[:10],  # show only last 10
+        "activities": activities,
+    }
+    return render(request, "admin_dashboard/user_detail.html", context)
 
-    <!-- Main Content -->
-    <div class="flex-1 flex flex-col overflow-hidden">
-        <!-- Top Header -->
-        <header class="bg-white border-b border-border">
-            <div class="p-4 sm:p-6">
-                <!-- Top Row: Mobile Actions -->
-                <div class="flex items-center justify-between mb-4 lg:hidden">
-                    <!-- Mobile Menu -->
-                    <button onclick="toggleMobileSidebar()" 
-                            class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                        <i class="fas fa-bars text-dark"></i>
-                    </button>
 
-                    <div class="flex items-center space-x-3">
-                        <!-- Notifications Dropdown Trigger -->
-                        <div class="relative">
-                            <button onclick="toggleNotifications()" 
-                                class="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center relative">
-                                <i class="fas fa-bell text-secondary"></i>
-                                <span class="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full"></span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
+@login_required
+@user_passes_test(is_admin_user)
+def suspend_user(request, user_id):
+    user = get_object_or_404(User, id=user_id)
 
-                <!-- Bottom Row: Title + Actions -->
-                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                    <!-- Title + Subtitle -->
-                    <div>
-                        <h1 class="text-xl sm:text-2xl font-bold text-dark">
-                            User Details
-                        </h1>
-                        <p class="text-secondary mt-1 text-sm sm:text-base">
-                            User ID #USR-4821 • Complete user profile and activity
-                        </p>
-                    </div>
+    if request.user == user:
+        messages.error(request, "You cannot suspend your own account.")
+        return redirect('admin_dashboard:user_detail', user_id=user.id)
 
-                    <!-- Right Actions (desktop) -->
-                    <div class="hidden lg:flex items-center space-x-4 mt-4 lg:mt-0">
-                        <!-- Back Button -->
-                        <a href="#" class="bg-white border border-border text-dark px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition duration-200 flex items-center">
-                            <i class="fas fa-arrow-left mr-2"></i>Back to Users
-                        </a>
-                        
-                        <!-- Notifications Dropdown Trigger -->
-                        <div class="relative">
-                            <button onclick="toggleNotifications()" 
-                                class="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center relative">
-                                <i class="fas fa-bell text-secondary"></i>
-                                <span class="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full"></span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    user.is_active = not user.is_active
+    user.save()
 
-            <!-- Notification Dropdown -->
-            <div id="notificationDropdown" 
-                class="hidden absolute mt-2 w-80 max-w-[95vw] bg-white rounded-lg shadow-lg border border-gray-200 z-50
-                    left-1/2 -translate-x-1/2
-                    lg:right-6 lg:left-auto lg:translate-x-0">
-                <div class="p-3 border-b font-semibold text-dark">System Notifications</div>
-                <ul class="max-h-64 overflow">
-                    <li class="px-3 py-2 hover:bg-gray-50 border-b">
-                        <a href="#" class="block text-sm">
-                            <p class="font-medium text-dark">New user registration requires approval</p>
-                            <p class="text-xs text-gray-400">Just now</p>
-                        </a>
-                    </li>
-                    <li class="px-3 py-2 hover:bg-gray-50 border-b">
-                        <a href="#" class="block text-sm">
-                            <p class="font-medium text-dark">High-value transaction flagged</p>
-                            <p class="text-xs text-gray-400">10 minutes ago</p>
-                        </a>
-                    </li>
-                    <li class="px-3 py-2 hover:bg-gray-50">
-                        <a href="#" class="block text-sm">
-                            <p class="font-medium text-dark">System backup completed</p>
-                            <p class="text-xs text-gray-400">1 hour ago</p>
-                        </a>
-                    </li>
-                </ul>
-                <div class="p-2 text-center">
-                    <a href="#" class="text-primary text-sm hover:underline">View all notifications</a>
-                </div>
-            </div>
-        </header>
+    if user.is_active:
+        messages.success(request, f"{user.username} has been activated.")
+        create_admin_notification(
+            "User Reinstated",
+            f"{user.username}'s account has been reactivated."
+        )
+    else:
+        messages.warning(request, f"{user.username} has been suspended.")
+        create_admin_notification(
+            "User Suspended",
+            f"Admin suspended user {user.username}."
+        )
 
-        <!-- Main Content -->
-        <main class="flex-1 overflow p-4">
-            <div class="h-full overflow pr-2">
-                <!-- User Profile Header -->
-                <div class="bg-white rounded-xl border border-border p-6 mb-6">
-                    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
-                        <div class="flex items-center space-x-4 mb-4 md:mb-0">
-                            <div class="relative">
-                                <div class="w-20 h-20 bg-gradient-to-r from-primary to-green-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                                    JD
-                                </div>
-                                <div class="absolute bottom-0 right-0 w-6 h-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
-                                    <i class="fas fa-check text-white text-xs"></i>
-                                </div>
-                            </div>
-                            <div>
-                                <h2 class="text-xl font-bold text-dark">John Doe</h2>
-                                <p class="text-secondary">@johndoe • johndoe@example.com</p>
-                                <div class="flex flex-wrap gap-2 mt-2">
-                                    <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">Verified User</span>
-                                    <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">Active</span>
-                                    <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">Standard Tier</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex flex-wrap gap-2">
-                            <button class="bg-white border border-border text-dark px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition duration-200 flex items-center">
-                                <i class="fas fa-edit mr-2"></i>Edit Profile
-                            </button>
-                            <button class="bg-white border border-yellow-200 text-yellow-700 px-4 py-2 rounded-lg font-medium hover:bg-yellow-50 transition duration-200 flex items-center">
-                                <i class="fas fa-ban mr-2"></i>Suspend User
-                            </button>
-                            <button class="bg-white border border-red-200 text-red-700 px-4 py-2 rounded-lg font-medium hover:bg-red-50 transition duration-200 flex items-center">
-                                <i class="fas fa-trash-alt mr-2"></i>Delete Account
-                            </button>
-                        </div>
-                    </div>
-                </div>
+    return redirect('admin_dashboard:user_detail', user_id=user.id)
 
-                <!-- Main Content Grid -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- Left Column: User Information -->
-                    <div class="lg:col-span-1 space-y-6">
-                        <!-- Basic Information Card -->
-                        <div class="bg-white rounded-xl border border-border p-6">
-                            <h2 class="text-lg font-semibold text-dark mb-4 flex items-center">
-                                <i class="fas fa-user-circle text-primary mr-2"></i>
-                                Basic Information
-                            </h2>
-                            <div class="space-y-4">
-                                <div class="flex justify-between">
-                                    <span class="text-secondary">User ID</span>
-                                    <span class="font-medium">#USR-4821</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-secondary">Full Name</span>
-                                    <span class="font-medium">John Doe</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-secondary">Username</span>
-                                    <span class="font-medium">@johndoe</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-secondary">Email</span>
-                                    <span class="font-medium">johndoe@example.com</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-secondary">Phone</span>
-                                    <span class="font-medium">+1 (555) 123-4567</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-secondary">Date Joined</span>
-                                    <span class="font-medium">Oct 15, 2023</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-secondary">Last Login</span>
-                                    <span class="font-medium">2 hours ago</span>
-                                </div>
-                            </div>
-                        </div>
 
-                        <!-- Account Status Card -->
-                        <div class="bg-white rounded-xl border border-border p-6">
-                            <h2 class="text-lg font-semibold text-dark mb-4 flex items-center">
-                                <i class="fas fa-shield-alt text-primary mr-2"></i>
-                                Account Status
-                            </h2>
-                            <div class="space-y-4">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-secondary">Verification Status</span>
-                                    <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">Verified</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-secondary">Account Status</span>
-                                    <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">Active</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-secondary">KYC Level</span>
-                                    <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">Tier 2</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-secondary">2FA Enabled</span>
-                                    <span class="font-medium text-green-600">Yes</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+@login_required
+@user_passes_test(is_admin_user)
+def delete_user(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    username = user.username
+    user.delete()
+    messages.success(request, f"User {username} has been deleted.")
+    create_admin_notification(
+        "User Deleted",
+        f"Admin deleted user account: {username}."
+    )
+    return redirect('admin_dashboard:users')
 
-                    <!-- Center Column: Wallet & Transactions -->
-                    <div class="lg:col-span-2 space-y-6">
-                        <!-- Wallet Information Card -->
-                        <div class="bg-white rounded-xl border border-border p-6">
-                            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-                                <h2 class="text-lg font-semibold text-dark flex items-center">
-                                    <i class="fas fa-wallet text-primary mr-2"></i>
-                                    Wallet Information
-                                </h2>
-                                <div class="mt-2 md:mt-0">
-                                    <span class="text-secondary text-sm">Account #: ACC-28471935</span>
-                                </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                <div class="bg-gray-50 rounded-lg p-4 text-center">
-                                    <p class="text-secondary text-sm">Available Balance</p>
-                                    <p class="text-2xl font-bold text-dark mt-1">₦125,430.75</p>
-                                </div>
-                                <div class="bg-gray-50 rounded-lg p-4 text-center">
-                                    <p class="text-secondary text-sm">Total Deposits</p>
-                                    <p class="text-2xl font-bold text-dark mt-1">₦284,500.00</p>
-                                </div>
-                                <div class="bg-gray-50 rounded-lg p-4 text-center">
-                                    <p class="text-secondary text-sm">Total Withdrawals</p>
-                                    <p class="text-2xl font-bold text-dark mt-1">₦159,069.25</p>
-                                </div>
-                            </div>
 
-                            <h3 class="font-medium text-gray-800 mb-4 flex items-center">
-                                <i class="fas fa-exchange-alt text-primary mr-2"></i>
-                                Recent Transactions
-                            </h3>
-                            <div class="overflow-x-auto rounded-lg border border-gray-100">
-                                <table class="min-w-full divide-y divide-gray-100 text-sm">
-                                    <thead class="bg-gray-50">
-                                        <tr>
-                                            <th class="px-4 py-3 text-left text-gray-600 font-medium">Type</th>
-                                            <th class="px-4 py-3 text-left text-gray-600 font-medium">Details</th>
-                                            <th class="px-4 py-3 text-right text-gray-600 font-medium">Amount</th>
-                                            <th class="px-4 py-3 text-center text-gray-600 font-medium">Status</th>
-                                            <th class="px-4 py-3 text-center text-gray-600 font-medium">Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-100">
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="px-4 py-3">
-                                                <div class="flex items-center">
-                                                    <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mr-2">
-                                                        <i class="fas fa-arrow-down text-green-600 text-xs"></i>
-                                                    </div>
-                                                    <span>Deposit</span>
-                                                </div>
-                                            </td>
-                                            <td class="px-4 py-3">Bank Transfer • Ref: TXN-8472</td>
-                                            <td class="px-4 py-3 text-right font-medium text-green-600">+₦50,000.00</td>
-                                            <td class="px-4 py-3 text-center">
-                                                <span class="status-completed px-2 py-1 rounded-full text-xs">Completed</span>
-                                            </td>
-                                            <td class="px-4 py-3 text-center text-secondary">Oct 28, 2023</td>
-                                        </tr>
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="px-4 py-3">
-                                                <div class="flex items-center">
-                                                    <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center mr-2">
-                                                        <i class="fas fa-arrow-up text-red-600 text-xs"></i>
-                                                    </div>
-                                                    <span>Withdrawal</span>
-                                                </div>
-                                            </td>
-                                            <td class="px-4 py-3">To Bank Account • Ref: TXN-9261</td>
-                                            <td class="px-4 py-3 text-right font-medium text-red-600">-₦25,000.00</td>
-                                            <td class="px-4 py-3 text-center">
-                                                <span class="status-completed px-2 py-1 rounded-full text-xs">Completed</span>
-                                            </td>
-                                            <td class="px-4 py-3 text-center text-secondary">Oct 25, 2023</td>
-                                        </tr>
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="px-4 py-3">
-                                                <div class="flex items-center">
-                                                    <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center mr-2">
-                                                        <i class="fas fa-paper-plane text-red-600 text-xs"></i>
-                                                    </div>
-                                                    <span>Transfer</span>
-                                                </div>
-                                            </td>
-                                            <td class="px-4 py-3">To User #USR-5392</td>
-                                            <td class="px-4 py-3 text-right font-medium text-red-600">-₦15,000.00</td>
-                                            <td class="px-4 py-3 text-center">
-                                                <span class="status-completed px-2 py-1 rounded-full text-xs">Completed</span>
-                                            </td>
-                                            <td class="px-4 py-3 text-center text-secondary">Oct 22, 2023</td>
-                                        </tr>
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="px-4 py-3">
-                                                <div class="flex items-center">
-                                                    <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mr-2">
-                                                        <i class="fas fa-arrow-down text-green-600 text-xs"></i>
-                                                    </div>
-                                                    <span>Deposit</span>
-                                                </div>
-                                            </td>
-                                            <td class="px-4 py-3">Card Payment • Ref: TXN-7384</td>
-                                            <td class="px-4 py-3 text-right font-medium text-green-600">+₦30,000.00</td>
-                                            <td class="px-4 py-3 text-center">
-                                                <span class="status-completed px-2 py-1 rounded-full text-xs">Completed</span>
-                                            </td>
-                                            <td class="px-4 py-3 text-center text-secondary">Oct 18, 2023</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="mt-4 text-center">
-                                <a href="#" class="text-primary text-sm font-medium hover:text-green-700 flex items-center justify-center">
-                                    <span>View All Transactions</span>
-                                    <i class="fas fa-chevron-right ml-1 text-xs"></i>
-                                </a>
-                            </div>
-                        </div>
+@login_required
+@user_passes_test(is_admin_user)
+def admin_agent_detail(request, reference):
+    agent_app = get_object_or_404(AgentApplication, reference=reference)
+    user_obj = agent_app.user
+    profile = Profile.objects.filter(user=user_obj).first()
+    wallet = Wallet.objects.filter(user=user_obj).first()
 
-                        <!-- Recent Activities Card -->
-                        <div class="bg-white rounded-xl border border-border p-6">
-                            <h2 class="text-lg font-semibold text-dark mb-4 flex items-center">
-                                <i class="fas fa-history text-primary mr-2"></i>
-                                Recent Activities
-                            </h2>
-                            <div class="space-y-4 max-h-80 overflow-y-auto">
-                                <div class="flex items-start space-x-3 p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition duration-200">
-                                    <div class="w-10 h-10 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
-                                        <i class="fas fa-user-check"></i>
-                                    </div>
-                                    <div class="flex-1">
-                                        <p class="font-medium text-gray-800 text-sm">Profile Updated</p>
-                                        <p class="text-gray-500 text-xs mt-1">User updated their profile information</p>
-                                        <p class="text-gray-400 text-xs mt-1">2 hours ago</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-start space-x-3 p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition duration-200">
-                                    <div class="w-10 h-10 flex items-center justify-center rounded-full bg-green-100 text-green-600 flex-shrink-0">
-                                        <i class="fas fa-exchange-alt"></i>
-                                    </div>
-                                    <div class="flex-1">
-                                        <p class="font-medium text-gray-800 text-sm">Successful Transaction</p>
-                                        <p class="text-gray-500 text-xs mt-1">User completed a deposit of ₦50,000.00</p>
-                                        <p class="text-gray-400 text-xs mt-1">1 day ago</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-start space-x-3 p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition duration-200">
-                                    <div class="w-10 h-10 flex items-center justify-center rounded-full bg-purple-100 text-purple-600 flex-shrink-0">
-                                        <i class="fas fa-shield-alt"></i>
-                                    </div>
-                                    <div class="flex-1">
-                                        <p class="font-medium text-gray-800 text-sm">Security Update</p>
-                                        <p class="text-gray-500 text-xs mt-1">User changed their password</p>
-                                        <p class="text-gray-400 text-xs mt-1">2 days ago</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-start space-x-3 p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition duration-200">
-                                    <div class="w-10 h-10 flex items-center justify-center rounded-full bg-yellow-100 text-yellow-600 flex-shrink-0">
-                                        <i class="fas fa-question-circle"></i>
-                                    </div>
-                                    <div class="flex-1">
-                                        <p class="font-medium text-gray-800 text-sm">Support Ticket Created</p>
-                                        <p class="text-gray-500 text-xs mt-1">User submitted a support request</p>
-                                        <p class="text-gray-400 text-xs mt-1">3 days ago</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-start space-x-3 p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition duration-200">
-                                    <div class="w-10 h-10 flex items-center justify-center rounded-full bg-indigo-100 text-indigo-600 flex-shrink-0">
-                                        <i class="fas fa-mobile-alt"></i>
-                                    </div>
-                                    <div class="flex-1">
-                                        <p class="font-medium text-gray-800 text-sm">Device Login</p>
-                                        <p class="text-gray-500 text-xs mt-1">User logged in from a new device</p>
-                                        <p class="text-gray-400 text-xs mt-1">5 days ago</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
+    context = {
+        "agent_app": agent_app,
+        "user_obj": user_obj,
+        "profile": profile,
+        "wallet": wallet,
+    }
+    return render(request, "admin_dashboard/agent_detail.html", context)
 
-    <script>
-        // Mobile sidebar toggle
-        function toggleMobileSidebar() {
-            const sidebar = document.getElementById("sidebar");
-            const overlay = document.getElementById("sidebarOverlay");
-            if (sidebar.classList.contains("-translate-x-full")) {
-                sidebar.classList.remove("-translate-x-full");
-                overlay.classList.remove("hidden");
-            } else {
-                sidebar.classList.add("-translate-x-full");
-                overlay.classList.add("hidden");
-            }
-        }
 
-        // Notifications dropdown toggle
-        function toggleNotifications() {
-            document.getElementById("notificationDropdown").classList.toggle("hidden");
-        }
+@login_required
+@user_passes_test(is_admin_user)
+def admin_agents_list(request):
+    agents = AgentApplication.objects.select_related('user').order_by('-created_at')
+    status_filter = request.GET.get('status')
+    if status_filter in ['pending', 'approved', 'rejected']:
+        agents = agents.filter(status=status_filter)
 
-        // Close dropdown when clicking outside
-        document.addEventListener("click", function(event) {
-            const dropdown = document.getElementById("notificationDropdown");
-            const bellButton = event.target.closest("button[onclick='toggleNotifications()']");
+    context = {
+        'agents': agents,
+        'status_filter': status_filter,
+    }
+    return render(request, 'admin_dashboard/agents.html', context)
 
-            if (!dropdown.classList.contains("hidden") &&
-                !dropdown.contains(event.target) &&
-                !bellButton) {
-                dropdown.classList.add("hidden");
-            }
-        });
-    </script>
-</body>
-</html>
+
+@login_required
+@user_passes_test(is_admin_user)
+def approve_agent(request, reference):
+    agent = get_object_or_404(AgentApplication, reference=reference)
+    agent.status = 'approved'
+    agent.save()
+
+    messages.success(request, "Agent approved successfully.")
+    create_admin_notification(
+        "Agent Approved",
+        f"Agent {agent.user.username} has been approved successfully."
+    )
+    return redirect('admin_dashboard:admin_agent_detail', reference=reference)
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def decline_agent(request, reference):
+    agent_app = get_object_or_404(AgentApplication, reference=reference)
+    profile = Profile.objects.get(user=agent_app.user)
+
+    if request.method == 'POST':
+        reason = request.POST.get('reason')
+        agent_app.status = 'rejected'
+        agent_app.decline_reason = reason
+        agent_app.save()
+
+        profile.is_agent = False
+        profile.save()
+
+        messages.error(request, f"Agent application declined. Reason: {reason}")
+        create_admin_notification(
+            "Agent Declined",
+            f"Agent {agent_app.user.username}'s application was declined. Reason: {reason}"
+        )
+
+    return redirect('admin_dashboard:admin_agent_detail', reference=reference)
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def suspend_agent(request, reference):
+    agent_app = get_object_or_404(AgentApplication, reference=reference)
+    profile = get_object_or_404(Profile, user=agent_app.user)
+
+    if request.method == "POST":
+        reason = request.POST.get("reason", "").strip()
+        if not reason:
+            messages.error(request, "Please provide a reason for suspension.")
+            return redirect('admin_dashboard:admin_agent_detail', reference=reference)
+
+        profile.is_suspended = True
+        profile.suspension_reason = reason
+        profile.appeal_status = "none"
+        profile.suspension_appeal = ""
+        profile.save()
+
+        log_admin_activity(
+            request.user,
+            title="Agent Suspended",
+            description=f"Agent {agent_app.user.username} was suspended. Reason: {reason}",
+            type="warning",
+            icon="fas fa-user-slash",
+        )
+
+
+        messages.warning(request, f"Agent {agent_app.user.username} has been suspended. Reason: {reason}")
+        create_admin_notification(
+            "Agent Suspended",
+            f"Agent {agent_app.user.username} has been suspended. Reason: {reason}"
+        )
+        return redirect('admin_dashboard:admin_agent_detail', reference=reference)
+
+    messages.error(request, "Invalid request method.")
+    return redirect('admin_dashboard:admin_agent_detail', reference=reference)
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def unsuspend_agent(request, reference):
+    agent_app = get_object_or_404(AgentApplication, reference=reference)
+    profile = get_object_or_404(Profile, user=agent_app.user)
+
+    if request.method == "POST":
+        profile.is_suspended = False
+        profile.suspension_reason = ""
+        profile.suspension_appeal = ""
+        profile.appeal_status = "resolved"
+        profile.save()
+
+        messages.success(request, f"Agent {agent_app.user.username} has been reinstated.")
+        create_admin_notification(
+            "Agent Reinstated",
+            f"Agent {agent_app.user.username} has been reinstated successfully."
+        )
+        return redirect('admin_dashboard:admin_agent_detail', reference=reference)
+
+    messages.error(request, "Invalid request method.")
+    return redirect('admin_dashboard:admin_agent_detail', reference=reference)
+
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def accept_appeal(request, reference):
+    agent_app = get_object_or_404(AgentApplication, reference=reference)
+    profile = get_object_or_404(Profile, user=agent_app.user)
+
+    profile.is_suspended = False
+    profile.appeal_status = "reviewed"
+    profile.suspension_reason = ""
+    profile.suspension_appeal = ""
+    profile.suspended_at = None
+    profile.save()
+
+    messages.success(request, f"Appeal accepted — {agent_app.user.username} has been reinstated as an agent.")
+    create_admin_notification(
+        "Appeal Accepted",
+        f"Suspension appeal for {agent_app.user.username} has been accepted and reinstated."
+    )
+    return redirect("admin_dashboard:admin_agent_detail", reference=reference)
+
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def reject_appeal(request, reference):
+    agent_app = get_object_or_404(AgentApplication, reference=reference)
+    profile = get_object_or_404(Profile, user=agent_app.user)
+
+    profile.appeal_status = "reviewed"
+    profile.save()
+
+    messages.warning(request, f"Appeal from {agent_app.user.username} has been rejected.")
+    create_admin_notification(
+        "Appeal Rejected",
+        f"Suspension appeal from {agent_app.user.username} has been rejected."
+    )
+    return redirect("admin_dashboard:admin_agent_detail", reference=reference)
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def delete_agent(request, reference):
+    agent_app = get_object_or_404(AgentApplication, reference=reference)
+    profile = get_object_or_404(Profile, user=agent_app.user)
+
+    if request.method == "POST":
+        profile.is_agent = False
+        profile.save()
+        username = agent_app.user.username
+        agent_app.delete()
+
+        messages.error(request, f"Agent {username} has been permanently removed.")
+        create_admin_notification(
+            "Agent Deleted",
+            f"Agent {username} has been permanently removed from the platform."
+        )
+        return redirect("admin_dashboard:agents")
+
+    return redirect("admin_dashboard:admin_agent_detail", reference=reference)
+
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def admin_notifications_page(request):
+    notifications = request.user.admin_notifications.all()
+    return render(request, "admin_dashboard/notifications.html", {"notifications": notifications})
+
+@login_required
+@user_passes_test(is_admin_user)
+def mark_admin_notification_as_read(request, notif_id):
+    notif = get_object_or_404(AdminNotification, id=notif_id, admin_user=request.user)
+    notif.is_read = True
+    notif.save()
+    return redirect('admin_dashboard:admin_notifications')
