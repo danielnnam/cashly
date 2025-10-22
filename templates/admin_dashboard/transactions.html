@@ -1,0 +1,135 @@
+{% extends "admin_dashboard/base.html" %}
+{% load humanize %}
+
+{% block title %}Transactions{% endblock %}
+{% block page_title %}Transactions Overview{% endblock %}
+{% block page_subtitle %}Monitor all deposit and withdrawal activities across the platform{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white border-l-4 border-green-600 rounded-lg shadow p-4">
+            <h4 class="text-sm text-gray-500">Total Transactions</h4>
+            <p class="text-2xl font-bold text-gray-800">{{ transactions|length|intcomma }}</p>
+        </div>
+        <div class="bg-white border-l-4 border-green-500 rounded-lg shadow p-4">
+            <h4 class="text-sm text-gray-500">Deposits</h4>
+            <p class="text-2xl font-bold text-gray-800">{{ deposit_count|intcomma }}</p>
+        </div>
+        <div class="bg-white border-l-4 border-green-400 rounded-lg shadow p-4">
+            <h4 class="text-sm text-gray-500">Withdrawals</h4>
+            <p class="text-2xl font-bold text-gray-800">{{ withdrawal_count|intcomma }}</p>
+        </div>
+        <div class="bg-white border-l-4 border-yellow-400 rounded-lg shadow p-4">
+            <h4 class="text-sm text-gray-500">Pending</h4>
+            <p class="text-2xl font-bold text-gray-800">{{ pending_count|intcomma }}</p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <form method="get" class="flex flex-wrap items-center gap-3 bg-white rounded-xl shadow p-4">
+        <div>
+            <label for="type" class="text-sm text-gray-500 block mb-1">Transaction Type</label>
+            <select name="type" id="type" class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
+                <option value="">All</option>
+                <option value="Deposit" {% if filter_type == "Deposit" %}selected{% endif %}>Deposit</option>
+                <option value="Withdrawal" {% if filter_type == "Withdrawal" %}selected{% endif %}>Withdrawal</option>
+            </select>
+        </div>
+        <div>
+            <label for="status" class="text-sm text-gray-500 block mb-1">Status</label>
+            <select name="status" id="status" class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
+                <option value="">All</option>
+                <option value="pending" {% if filter_status == "pending" %}selected{% endif %}>Pending</option>
+                <option value="approved" {% if filter_status == "approved" %}selected{% endif %}>Approved</option>
+                <option value="completed" {% if filter_status == "completed" %}selected{% endif %}>Completed</option>
+                <option value="rejected" {% if filter_status == "rejected" %}selected{% endif %}>Rejected</option>
+            </select>
+        </div>
+        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-2 mt-5">
+            Apply Filters
+        </button>
+    </form>
+
+    <!-- Transactions Table -->
+    <div class="bg-white rounded-xl shadow overflow-hidden mt-4 p-3">
+        <div class="overflow-x-auto">
+            <table id="transactionsTable" class="min-w-full text-sm text-gray-700">
+                <thead class="uppercase text-xs">
+                    <tr>
+                        <th class="px-4 py-3 text-left">Txn ID</th>
+                        <th class="px-4 py-3 text-left">Type</th>
+                        <th class="px-4 py-3 text-left">User</th>
+                        <th class="px-4 py-3 text-left">Agent</th>
+                        <th class="px-4 py-3 text-left">Amount</th>
+                        <th class="px-4 py-3 text-left">Commission</th>
+                        <th class="px-4 py-3 text-left">Status</th>
+                        <th class="px-4 py-3 text-left">Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tx in transactions %}
+                        <tr class="border-t hover:bg-gray-50 transition">
+                            <td class="font-semibold text-green-700">
+                                {{ tx.transaction_id|default:"-" }}
+                            </td>
+
+                            <td class="px-4 py-3 font-medium">
+                                {% if tx.tx_type == "Deposit" %}
+                                    <span class="text-green-600"><i class="fas fa-arrow-down mr-1"></i>Deposit</span>
+                                {% else %}
+                                    <span class="text-emerald-600"><i class="fas fa-arrow-up mr-1"></i>Withdrawal</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3">{{ tx.user.username }}</td>
+                            <td class="px-4 py-3">
+                                {% if tx.agent %}
+                                    {{ tx.agent.username }}
+                                {% else %}
+                                    <span class="text-gray-400 italic">None</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 font-semibold text-gray-800">₦{{ tx.amount|floatformat:2|intcomma }}</td>
+                            <td class="px-4 py-3 text-gray-500">₦{{ tx.agent_commission|default:"0.00"|intcomma }}</td>
+                            <td class="px-4 py-3">
+                                {% if tx.status == "completed" %}
+                                    <span class="bg-green-100 text-green-700 text-xs font-semibold px-2 py-1 rounded-full">Completed</span>
+                                {% elif tx.status == "pending" %}
+                                    <span class="bg-yellow-100 text-yellow-700 text-xs font-semibold px-2 py-1 rounded-full">Pending</span>
+                                {% elif tx.status == "approved" %}
+                                    <span class="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-1 rounded-full">Approved</span>
+                                {% elif tx.status == "rejected" %}
+                                    <span class="bg-red-100 text-red-700 text-xs font-semibold px-2 py-1 rounded-full">Rejected</span>
+                                {% else %}
+                                    <span class="bg-gray-100 text-gray-700 text-xs font-semibold px-2 py-1 rounded-full">{{ tx.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 text-gray-500 text-xs">{{ tx.created_at|date:"M d, Y H:i" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-gray-500 py-6">
+                                No transactions found.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    $('#transactionsTable').DataTable({
+        pageLength: 10,
+        ordering: true,
+        order: [[7, 'desc']],
+        language: { search: "", searchPlaceholder: "Search transactions..." }
+    });
+});
+</script>
+{% endblock %}
