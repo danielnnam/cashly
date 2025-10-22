@@ -1,0 +1,83 @@
+{% extends "admin_dashboard/base.html" %}
+{% load humanize %}
+
+{% block title %}Agents - Admin Dashboard{% endblock %}
+{% block page_title %}Agents Management{% endblock %}
+{% block page_subtitle %}View and manage all registered agents on the platform{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- HEADER -->
+    <div class="flex justify-between items-center">
+        <h1 class="text-2xl font-bold text-gray-800">Agents</h1>
+        <div>
+            <form method="get" class="flex items-center space-x-2">
+                <select name="status" onchange="this.form.submit()"
+                    class="border rounded-lg px-3 py-2 text-sm focus:ring focus:ring-indigo-200">
+                    <option value="">All</option>
+                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                </select>
+            </form>
+        </div>
+    </div>
+
+    <!-- SCROLLABLE CONTAINER -->
+    <div class="bg-white shadow-md rounded-2xl overflow-hidden border border-gray-100">
+        <div class="overflow-x-auto max-h-[600px] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            <table class="min-w-full table-auto border-collapse">
+                <thead class="bg-gray-50 text-gray-700 text-sm uppercase sticky top-0 z-10">
+                    <tr>
+                        <th class="px-6 py-3 text-left font-semibold">Agents</th>
+                        <th class="px-6 py-3 text-left font-semibold">Phone</th>
+                        <th class="px-6 py-3 text-left font-semibold">Bank Info</th>
+                        <th class="px-6 py-3 text-center font-semibold">Status</th>
+                        <th class="px-6 py-3 text-center font-semibold">Applied</th>
+                        <th class="px-6 py-3 text-right font-semibold">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y">
+                    {% for agent in agents %}
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4">
+                            <div>
+                                <p class="font-semibold">{{ agent.user.get_full_name|default:agent.user.username }}</p>
+                                <p class="text-sm text-gray-500">{{ agent.user.email }}</p>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">{{ agent.phone }}</td>
+                        <td class="px-6 py-4">
+                            <p class="text-sm">{{ agent.bank_name }}</p>
+                            <p class="text-xs text-gray-500">{{ agent.account_name }} — {{ agent.account_number }}</p>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            {% if agent.status == 'pending' %}
+                                <span class="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">Pending</span>
+                            {% elif agent.status == 'approved' %}
+                                <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">Approved</span>
+                            {% else %}
+                                <span class="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">Rejected</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-center text-gray-600 text-sm">
+                            {{ agent.created_at|naturaltime }}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <a href="{% url 'admin_dashboard:admin_agent_detail' agent.reference %}"
+                               class="text-indigo-600 hover:text-indigo-800 font-medium">View</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-8 text-gray-500">No agents found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
