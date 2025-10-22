@@ -1,0 +1,25 @@
+{% extends "agents/base.html" %}
+{% block title %}Account Suspended{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center text-center py-20 px-4">
+    <div class="bg-white p-8 rounded-xl shadow max-w-lg w-full">
+        <h2 class="text-2xl font-bold text-red-600 mb-3">Your Agent Account Has Been Suspended</h2>
+        <p class="text-gray-600 mb-6">
+            Reason: <span class="font-medium">{{ profile.suspension_reason|default:"No reason provided." }}</span>
+        </p>
+
+        {% if profile.appeal_status == "pending" %}
+            <p class="text-yellow-600 text-sm">You have already submitted an appeal. Please wait for admin review.</p>
+        {% else %}
+        <form method="post" action="{% url 'agents:appeal_suspension' %}" class="space-y-3">
+            {% csrf_token %}
+            <textarea name="appeal_text" rows="4" class="w-full border rounded-lg p-3 text-sm" placeholder="Explain why your suspension should be reconsidered..." required></textarea>
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg">
+                Submit Appeal
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
