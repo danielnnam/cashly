@@ -12,12 +12,18 @@ from django.core.paginator import Paginator
 from accounts.models import Profile
 from django.contrib.auth import login, logout, authenticate
 from admin_dashboard.utils import log_activity  
-
+from django.contrib import messages
 # Create your views here.
 
 @login_required
 def agent_dashboard(request):
     """Agent Dashboard showing key metrics and latest requests"""
+    profile = request.user.profile
+
+    if profile.is_suspended:
+        messages.warning(request, "Your agent account is suspended.")
+        return redirect('agents:suspension_notice')
+
     agent = request.user
     wallet = getattr(agent, "wallet", None)
 
@@ -53,6 +59,28 @@ def agent_dashboard(request):
     }
     return render(request, "agents/dashboard.html", context)
 
+
+@login_required
+def suspension_notice(request):
+    profile = request.user.profile
+
+    if not profile.is_suspended:
+        return redirect('agents:dashboard')  
+
+    return render(request, "agents/suspension_notice.html", {"profile": profile})
+
+
+@login_required
+def appeal_suspension(request):
+    profile = request.user.profile
+
+    if request.method == "POST":
+        appeal_text = request.POST.get("appeal_text")
+        profile.suspension_appeal = appeal_text
+        profile.appeal_status = "pending"
+        profile.save()
+        messages.success(request, "Your appeal has been submitted. The admin will review it soon.")
+    return redirect("agents:suspension_notice")
 
 
 @login_required
