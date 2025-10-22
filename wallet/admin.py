@@ -2,6 +2,8 @@ from django.contrib import admin
 from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin
 from .models import Wallet, Transaction, Beneficiary, PaymentRequest
+from .models import Dispute, DisputeMessage
+
 
 class WalletInline(admin.StackedInline):
     model = Wallet
@@ -50,3 +52,17 @@ class PaymentRequestAdmin(admin.ModelAdmin):
     list_display = ['requester', 'recipient', 'amount', 'status', 'created_at']
     list_filter = ['status', 'created_at']
     search_fields = ['requester__username', 'recipient__username']
+
+
+
+class DisputeMessageInline(admin.TabularInline):
+    model = DisputeMessage
+    extra = 0
+    readonly_fields = ("sender", "message", "timestamp")
+
+@admin.register(Dispute)
+class DisputeAdmin(admin.ModelAdmin):
+    list_display = ("id", "subject", "user", "agent", "status", "created_at")
+    list_filter = ("status", "created_at")
+    search_fields = ("subject", "user__username", "agent__username")
+    inlines = [DisputeMessageInline]
