@@ -1,0 +1,337 @@
+{% extends "admin_dashboard/base.html" %}
+{% load humanize %}
+
+{% block title %}Agent Detail - Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="h-full overflow-auto p-4">
+
+    <!-- BACK BUTTON -->
+    <div class="mb-4">
+        <a href="{% url 'admin_dashboard:agents' %}" class="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium">
+            <i class="fas fa-arrow-left mr-2"></i> Back to Agents
+        </a>
+    </div>
+
+    <!-- AGENT HEADER -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+            <div class="flex items-center space-x-4 mb-4 md:mb-0">
+                <div class="relative">
+                    {% if profile.avatar %}
+                        <img src="{{ profile.avatar.url }}" class="w-20 h-20 rounded-full object-cover border">
+                    {% else %}
+                        <div class="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-bold text-xl">
+                            {{ user_obj.first_name|slice:":1" }}{{ user_obj.last_name|slice:":1" }}
+                        </div>
+                    {% endif %}
+                    {% if user_obj.is_active %}
+                        <span class="absolute bottom-0 right-0 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></span>
+                    {% else %}
+                        <span class="absolute bottom-0 right-0 w-5 h-5 bg-red-500 border-2 border-white rounded-full"></span>
+                    {% endif %}
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">{{ user_obj.get_full_name|default:user_obj.username }}</h2>
+                    <p class="text-gray-500 text-sm">@{{ user_obj.username }} • {{ user_obj.email }}</p>
+                    <div class="flex flex-wrap gap-2 mt-2">
+                        {% if profile.is_agent %}
+                            <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">Agent</span>
+                        {% endif %}
+
+                        <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+                            {{ agent_app.status|capfirst }}
+                        </span>
+
+                        {% if agent_app.status != 'rejected' %}
+                            <span class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-medium">
+                                Ref: {{ agent_app.reference }}
+                            </span>
+                        {% endif %}
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+                {% if agent_app.status == "pending" %}
+                    <!-- Approve Button -->
+                    <form method="post" action="{% url 'admin_dashboard:approve_agent' agent_app.reference %}">
+                        {% csrf_token %}
+                        <button type="submit"
+                            class="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition duration-200 flex items-center">
+                            <i class="fas fa-check mr-2"></i>Approve
+                        </button>
+                    </form>
+
+                    <!-- Decline Button -->
+                    <button onclick="openDeclineModal()"
+                        class="bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition duration-200 flex items-center">
+                        <i class="fas fa-times mr-2"></i>Decline
+                    </button>
+                {% endif %}
+
+                <!-- 🔹 Agent Actions -->
+                <div class="flex flex-wrap gap-2">
+                    {% if profile.is_suspended %}
+                        <!-- UNSUSPEND BUTTON -->
+                        <form method="post" action="{% url 'admin_dashboard:unsuspend_agent' agent_app.reference %}">
+                            {% csrf_token %}
+                            <button type="submit"
+                                class="bg-white border border-green-300 text-green-700 px-4 py-2 rounded-lg font-medium hover:bg-green-50 transition duration-200 flex items-center">
+                                <i class="fas fa-check-circle mr-2"></i>Reinstate Agent
+                            </button>
+                        </form>
+                    {% else %}
+                        <!-- SUSPEND BUTTON -->
+                        <button onclick="openSuspendModal()"
+                            class="bg-white border border-yellow-300 text-yellow-700 px-4 py-2 rounded-lg font-medium hover:bg-yellow-50 transition duration-200 flex items-center">
+                            <i class="fas fa-ban mr-2"></i>Suspend Agent
+                        </button>
+                    {% endif %}
+
+                    <!-- DELETE BUTTON (optional, not wired yet) -->
+                    <button onclick="openDeleteModal()"
+                        class="bg-white border border-red-300 text-red-700 px-4 py-2 rounded-lg font-medium hover:bg-red-50 transition duration-200 flex items-center">
+                        <i class="fas fa-trash-alt mr-2"></i>Delete Agent
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- 🟡 Suspend Confirmation Modal -->
+    <div id="suspendModal"
+        class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 relative">
+
+            <div class="flex items-center space-x-3 mb-4">
+                <i class="fas fa-exclamation-triangle text-yellow-500 text-2xl"></i>
+                <h3 class="text-lg font-bold text-gray-800">Suspend Agent?</h3>
+            </div>
+
+            <p class="text-gray-600 text-sm mb-4">
+                Are you sure you want to suspend
+                <strong>{{ user_obj.get_full_name|default:user_obj.username }}</strong>? <br>
+                This will disable their agent features until you reinstate them.
+            </p>
+
+            <!-- Reason Field -->
+            <form method="post" action="{% url 'admin_dashboard:suspend_agent' agent_app.reference %}" id="suspendForm">
+                {% csrf_token %}
+                <label for="reason" class="block text-sm font-medium text-gray-700 mb-2">Reason for Suspension</label>
+                <textarea name="reason" id="reason" rows="3"
+                    class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring focus:ring-yellow-100 focus:border-yellow-400 mb-5"
+                    placeholder="Enter reason for suspending this agent..." required></textarea>
+
+                <!-- ACTION BUTTONS -->
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeSuspendModal()"
+                        class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-medium transition">
+                        Confirm Suspend
+                    </button>
+                </div>
+            </form>
+
+            <button onclick="closeSuspendModal()" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+
+    <!-- 🔴 Delete Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 relative">
+
+            <div class="flex items-center space-x-3 mb-4">
+                <i class="fas fa-trash-alt text-red-500 text-2xl"></i>
+                <h3 class="text-lg font-bold text-gray-800">Delete Agent?</h3>
+            </div>
+
+            <p class="text-gray-600 text-sm mb-6">
+                You are about to permanently remove <strong>{{ user_obj.get_full_name|default:user_obj.username }}</strong> as an agent.
+                This will revoke all agent privileges and delete their agent record. The user account itself will remain active.
+            </p>
+
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeDeleteModal()" 
+                        class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition">
+                    Cancel
+                </button>
+                <form method="post" action="{% url 'admin_dashboard:delete_agent' agent_app.reference %}">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition">
+                        Confirm Delete
+                    </button>
+                </form>
+            </div>
+
+            <button onclick="closeDeleteModal()" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+
+
+    <!-- INFO GRID -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- LEFT: BASIC INFO -->
+        <div class="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-user-circle text-primary mr-2"></i> Basic Information
+            </h3>
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between"><span class="text-gray-500">Full Name</span><span class="font-medium">{{ user_obj.get_full_name|default:"N/A" }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Username</span><span class="font-medium">{{ user_obj.username }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Email</span><span class="font-medium">{{ user_obj.email }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Phone</span><span class="font-medium">{{ agent_app.phone }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Location</span><span class="font-medium">{{ agent_app.location }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Joined</span><span class="font-medium">{{ user_obj.date_joined|date:"M d, Y" }}</span></div>
+            </div>
+        </div>
+
+        <!-- MIDDLE: BANK INFO -->
+        <div class="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-university text-primary mr-2"></i> Bank Information
+            </h3>
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between"><span class="text-gray-500">Bank Name</span><span class="font-medium">{{ agent_app.bank_name }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Account Name</span><span class="font-medium">{{ agent_app.account_name }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Account Number</span><span class="font-medium">{{ agent_app.account_number }}</span></div>
+            </div>
+        </div>
+
+        <!-- RIGHT: WALLET INFO -->
+        <div class="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-wallet text-primary mr-2"></i> Wallet Information
+            </h3>
+            {% if wallet %}
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <p class="text-gray-500 text-sm">Available Balance</p>
+                    <p class="text-2xl font-bold text-gray-800 mt-1">₦{{ wallet.balance|floatformat:2|intcomma }}</p>
+                    <p class="text-gray-400 text-xs mt-1">Account: {{ wallet.account_number }}</p>
+                </div>
+            {% else %}
+                <p class="text-gray-500 text-sm">No wallet found for this agent.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- REASON FOR APPLYING -->
+    <div class="bg-white border border-gray-200 rounded-xl p-6 mt-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+            <i class="fas fa-comment-dots text-primary mr-2"></i> Reason for Applying
+        </h3>
+        <p class="text-gray-600 text-sm">{{ agent_app.reason|default:"No reason provided." }}</p>
+    </div>
+
+    {% if agent_app.status == "rejected" and agent_app.decline_reason %}
+    <!-- DECLINE REASON SECTION -->
+    <div class="bg-red-50 border border-red-200 rounded-xl p-6 mt-6">
+        <h3 class="text-lg font-semibold text-red-700 mb-3 flex items-center">
+            <i class="fas fa-exclamation-circle mr-2"></i> Decline Reason
+        </h3>
+        <p class="text-gray-700 text-sm">{{ agent_app.decline_reason }}</p>
+    </div>
+    {% endif %}
+
+    {% if profile.is_suspended %}
+        <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-6 mt-6">
+            <h3 class="text-lg font-semibold text-yellow-700 mb-3 flex items-center">
+                <i class="fas fa-ban mr-2"></i> Agent Suspended
+            </h3>
+            <div class="text-sm text-gray-700 space-y-2">
+                <p><strong>Reason:</strong> {{ profile.suspension_reason|default:"No reason provided." }}</p>
+                {% if profile.suspended_at %}
+                    <p><strong>Suspended On:</strong> {{ profile.suspended_at|date:"M d, Y - h:i A" }}</p>
+                {% endif %}
+
+                {% if profile.suspension_appeal %}
+                    <div class="bg-white border border-yellow-100 rounded-lg p-3 mt-3">
+                        <p class="font-medium text-gray-800 mb-1">🗣 Agent Appeal:</p>
+                        <p class="text-gray-600">{{ profile.suspension_appeal }}</p>
+                        <p class="text-xs text-gray-400 mt-1">
+                            Status: {{ profile.appeal_status|capfirst }}
+                        </p>
+                    </div>
+
+                    {% if profile.appeal_status == "pending" %}
+                        <div class="flex justify-end gap-2 mt-3">
+                            <form method="post" action="{% url 'admin_dashboard:accept_appeal' agent_app.reference %}">
+                                {% csrf_token %}
+                                <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                                    <i class="fas fa-check mr-1"></i>Accept Appeal
+                                </button>
+                            </form>
+                            <form method="post" action="{% url 'admin_dashboard:reject_appeal' agent_app.reference %}">
+                                {% csrf_token %}
+                                <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                                    <i class="fas fa-times mr-1"></i>Reject Appeal
+                                </button>
+                            </form>
+                        </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+    
+    <!-- DECLINE MODAL -->
+    <div id="declineModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 class="text-lg font-bold text-gray-800 mb-3">Decline Agent Application</h2>
+            <p class="text-sm text-gray-600 mb-4">Please provide a reason for declining this application.</p>
+
+            <form method="post" action="{% url 'admin_dashboard:decline_agent' agent_app.reference %}">
+                {% csrf_token %}
+                <textarea name="reason" rows="3" required
+                    class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-red-200"
+                    placeholder="Enter reason for declining..."></textarea>
+
+                <div class="flex justify-end mt-4 space-x-3">
+                    <button type="button" onclick="closeDeclineModal()"
+                        class="px-4 py-2 bg-gray-200 rounded-lg text-gray-700 hover:bg-gray-300 transition">Cancel</button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+
+<script>
+function openDeclineModal() {
+    document.getElementById('declineModal').classList.remove('hidden');
+}
+function closeDeclineModal() {
+    document.getElementById('declineModal').classList.add('hidden');
+}
+
+function openSuspendModal() {
+    document.getElementById('suspendModal').classList.remove('hidden');
+}
+function closeSuspendModal() {
+    document.getElementById('suspendModal').classList.add('hidden');
+}
+
+function openDeleteModal() {
+    document.getElementById('deleteModal').classList.remove('hidden');
+}
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.add('hidden');
+}
+</script>
+{% endblock %}
