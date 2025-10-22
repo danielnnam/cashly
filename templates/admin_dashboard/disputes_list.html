@@ -1,0 +1,99 @@
+{% extends "admin_dashboard/base.html" %}
+{% load humanize %}
+
+{% block title %}Disputes - Admin{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- HEADER & FILTER -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <h1 class="text-3xl font-bold text-green-700">Dispute Center</h1>
+
+    <form method="get" class="flex items-center space-x-3">
+      <input 
+        type="text" 
+        name="search" 
+        value="{{ request.GET.search }}" 
+        placeholder="Search subject or user..." 
+        class="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-green-400 focus:outline-none"
+      />
+
+      <select 
+        name="status" 
+        onchange="this.form.submit()" 
+        class="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-green-400 focus:outline-none"
+      >
+        <option value="">All Statuses</option>
+        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="under_review" {% if status_filter == 'under_review' %}selected{% endif %}>Under Review</option>
+        <option value="resolved" {% if status_filter == 'resolved' %}selected{% endif %}>Resolved</option>
+        <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+      </select>
+
+      <button 
+        type="submit" 
+        class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all"
+      >
+        Filter
+      </button>
+    </form>
+  </div>
+
+  <!-- DISPUTE LIST -->
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for d in disputes %}
+      <div class="bg-white rounded-2xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-300 p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="font-semibold text-gray-800 truncate max-w-[80%]">{{ d.subject }}</h2>
+            <span class="
+              px-3 py-1 rounded-full text-xs font-semibold 
+              {% if d.status == 'pending' %}bg-yellow-100 text-yellow-800
+              {% elif d.status == 'under_review' %}bg-blue-100 text-blue-800
+              {% elif d.status == 'resolved' %}bg-green-100 text-green-800
+              {% elif d.status == 'rejected' %}bg-red-100 text-red-800
+              {% endif %}
+            ">
+              {{ d.status|title }}
+            </span>
+          </div>
+
+          <p class="text-sm text-gray-600 mb-1">
+            <span class="font-medium text-gray-700">User:</span> {{ d.user.username }}
+          </p>
+          <p class="text-sm text-gray-600 mb-2">
+            <span class="font-medium text-gray-700">Agent:</span> 
+            {% if d.agent %}{{ d.agent.username }}{% else %}<span class="text-gray-400">—</span>{% endif %}
+          </p>
+
+          <p class="text-xs text-gray-500">
+            Created: {{ d.created_at|date:"M d, Y · H:i" }}
+          </p>
+        </div>
+
+        <div class="mt-4 flex justify-between items-center">
+          <a 
+            href="{% url 'admin_dispute_detail' d.id %}" 
+            class="text-green-600 font-medium hover:underline text-sm"
+          >
+            View Details →
+          </a>
+
+          <div class="flex items-center space-x-1 text-xs text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-3.5-3.5m0 0L7 16m3.5 3.5L7 20M4 4h16v16H4V4z" />
+            </svg>
+            <span>{{ d.messages.count }} message{{ d.messages.count|pluralize }}</span>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="col-span-full bg-white rounded-lg shadow p-6 text-center text-gray-500">
+        <p>No disputes found.</p>
+      </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}
