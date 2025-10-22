@@ -210,3 +210,56 @@ def create_user_wallet(sender, instance, created, **kwargs):
     """Automatically create a wallet for every new user."""
     if created and not hasattr(instance, "wallet"):
         Wallet.objects.create(user=instance)
+
+
+
+class Dispute(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("under_review", "Under Review"),
+        ("resolved", "Resolved"),
+        ("rejected", "Rejected"),
+    ]
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="user_disputes"
+    )
+    agent = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="agent_disputes",
+        null=True, blank=True
+    )
+    transaction = models.ForeignKey(
+        "Transaction", on_delete=models.CASCADE, related_name="disputes"
+    )
+    subject = models.CharField(max_length=255)
+    description = models.TextField()
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="pending"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Dispute #{self.id} - {self.subject}"
+
+    @property
+    def last_message(self):
+        return self.messages.order_by("-timestamp").first()
+
+
+class DisputeMessage(models.Model):
+    dispute = models.ForeignKey(
+        Dispute, on_delete=models.CASCADE, related_name="messages"
+    )
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["timestamp"]
+
+    def __str__(self):
+        return f"Message by {self.sender.username} on Dispute #{self.dispute.id}"
