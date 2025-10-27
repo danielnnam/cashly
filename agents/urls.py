@@ -10,5 +10,7 @@ urlpatterns = [
     path('history/', views.agent_history, name='agent_history'),
     path('suspended/', views.suspension_notice, name='suspension_notice'),
     path('appeal-suspension/', views.appeal_suspension, name='appeal_suspension'),
+    path("disputes/", views.agent_dispute_list, name="agent_disputes"),
+    path("disputes/<int:dispute_id>/", views.agent_dispute_detail, name="agent_dispute_detail"),
     path('logout/', views.logout_view, name='logout'), 
 ]
