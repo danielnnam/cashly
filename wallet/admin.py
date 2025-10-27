@@ -55,14 +55,12 @@ class PaymentRequestAdmin(admin.ModelAdmin):
 
 
 
-class DisputeMessageInline(admin.TabularInline):
-    model = DisputeMessage
-    extra = 0
-    readonly_fields = ("sender", "message", "timestamp")
-
 @admin.register(Dispute)
 class DisputeAdmin(admin.ModelAdmin):
-    list_display = ("id", "subject", "user", "agent", "status", "created_at")
-    list_filter = ("status", "created_at")
-    search_fields = ("subject", "user__username", "agent__username")
-    inlines = [DisputeMessageInline]
+    list_display = ("id", "user", "agent", "issue_type", "status", "initiator_type", "created_at")
+    list_filter = ("status", "initiator_type", "created_at")
+    search_fields = ("user__username", "agent__username", "issue_type")
+
+@admin.register(DisputeMessage)
+class DisputeMessageAdmin(admin.ModelAdmin):
+    list_display = ("dispute", "sender", "timestamp")
