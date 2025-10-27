@@ -1,0 +1,87 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Report an Issue{% endblock %}
+{% block page_title %}Report an Issue{% endblock %}
+{% block page_subtitle %}Let us know what went wrong with your transaction..{% endblock %}
+{% load humanize %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-8">
+
+  <!-- Header Section -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-dark">Report an Issue</h1>
+      <p class="text-sm text-secondary mt-1">
+        Let us know what went wrong with your transaction — our team will review it.
+      </p>
+    </div>
+  </div>
+
+  <!-- Dispute Form Card -->
+  <div class="bg-white border border-border shadow-md rounded-2xl p-8 space-y-6">
+
+    <!-- Transaction Summary -->
+    {% if deposit %}
+      {% with ref=deposit.reference amt=deposit.amount %}
+        <div class="bg-green-50 border border-green-100 rounded-xl p-5">
+          <p class="text-sm text-secondary mb-1">Transaction Reference</p>
+          <p class="text-base font-semibold text-dark">{{ ref }}</p>
+          <div class="mt-3 flex justify-between text-sm">
+            <span class="text-secondary">Amount</span>
+            <span class="font-bold text-green-700 text-lg">
+              ₦{{ amt|floatformat:2|intcomma }}
+            </span>
+          </div>
+        </div>
+      {% endwith %}
+    {% elif withdrawal %}
+      {% with ref=withdrawal.reference amt=withdrawal.amount %}
+        <div class="bg-green-50 border border-green-100 rounded-xl p-5">
+          <p class="text-sm text-secondary mb-1">Transaction Reference</p>
+          <p class="text-base font-semibold text-dark">{{ ref }}</p>
+          <div class="mt-3 flex justify-between text-sm">
+            <span class="text-secondary">Amount</span>
+            <span class="font-bold text-green-700 text-lg">
+              ₦{{ amt|floatformat:2|intcomma }}
+            </span>
+          </div>
+        </div>
+      {% endwith %}
+    {% endif %}
+
+    <!-- Dispute Form -->
+    <form method="post" class="space-y-6">
+      {% csrf_token %}
+
+      <div>
+        <label class="block text-sm font-semibold text-dark mb-2">Subject</label>
+        <input type="text" name="subject" 
+               placeholder="e.g. Agent did not confirm payment"
+               class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 focus:border-green-400 transition" required>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-dark mb-2">Message</label>
+        <textarea name="message" rows="4" 
+                  placeholder="Describe the issue in detail..."
+                  class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 focus:border-green-400 transition" required></textarea>
+      </div>
+
+      <div class="flex justify-end">
+        <button type="submit"
+                class="px-6 py-2.5 rounded-lg bg-green-600 text-white font-medium shadow-sm hover:bg-green-700 transition">
+          📩 Submit Dispute
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Back link -->
+  <div class="text-center">
+    <a href="javascript:history.back()" class="text-sm text-green-700 hover:underline">
+      ← Go Back
+    </a>
+  </div>
+
+</div>
+{% endblock %}
