@@ -109,10 +109,17 @@
                     <span>History</span>
                 </a>
 
-                <a href="#" class="flex items-center space-x-3 p-3 rounded-lg text-secondary hover:bg-gray-50 hover:text-dark">
+                <a href="{% url 'agents:agent_disputes' %}" 
+                class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group 
+                {% if '/agents/disputes/' in request.path %}
+                    active-nav
+                {% else %}
+                    text-secondary hover:bg-gray-50 hover:text-dark
+                {% endif %}">
                     <i class="fas fa-exclamation-circle w-6 text-center"></i>
-                    <span>Disputes</span>
+                    <span>My Disputes</span>
                 </a>
+
             </nav>
         </div>
 
@@ -156,9 +163,15 @@
                         <i class="fas fa-bars text-secondary"></i>
                     </button>
 
-                    <h1 class="text-xl sm:text-2xl font-bold text-dark">
-                        {% block page_title %}Dashboard{% endblock %}
-                    </h1>
+                    <!-- Title + Subtitle -->
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-bold text-dark">
+                            {% block page_title %}Dashboard{% endblock %}
+                        </h1>
+                        <p class="text-secondary mt-1 text-sm sm:text-base">
+                            {% block page_subtitle %}Welcome to your banking dashboard{% endblock %}
+                        </p>
+                    </div>
                 </div>
 
                 <div class="hidden lg:flex items-center space-x-4">
