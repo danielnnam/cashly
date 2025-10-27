@@ -11,4 +11,10 @@ urlpatterns = [
     path("lookup-account/", views.lookup_account, name="lookup_account"),
     path("history/", views.transaction_history, name="history"),
     path("history/<str:transaction_id>/", views.transaction_detail, name="transaction_detail"),
+
+    # User disputes
+    path("disputes/", views.dispute_list, name="dispute_list"),
+    path("disputes/create/<str:transaction_id>/", views.create_dispute, name="create_dispute"),
+    path("disputes/<int:dispute_id>/", views.dispute_detail, name="dispute_detail"),
+
 ]
