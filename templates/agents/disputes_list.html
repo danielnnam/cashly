@@ -1,0 +1,116 @@
+{% extends 'agents/base.html' %}
+{% load humanize %}
+
+{% block title %}My Disputes - Cashly{% endblock %}
+{% block page_title %}My Disputes{% endblock %}
+{% block page_subtitle %}Easily manage and track all disputes assigned to you{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Status Filter Bar -->
+    <div class="bg-white border border-border rounded-xl p-4 shadow-sm">
+        <div class="flex flex-nowrap gap-2 overflow scrollbar-hide">
+            
+            <!-- Show All Button -->
+            <a href="{% url 'agents:agent_disputes' %}"
+            class="flex-shrink-0 filter-link px-3 py-1.5 text-xs rounded-lg font-medium border transition-all duration-150
+            {% if not status_filter %}bg-blue-600 text-white border-blue-600{% else %}bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100{% endif %}">
+            Show All
+            </a>
+
+            <!-- Status Buttons -->
+            {% for s in status_filters %}
+            <a href="?status={{ s }}"
+            class="flex-shrink-0 filter-link px-3 py-1.5 text-xs rounded-lg font-medium border transition-all duration-150
+            {% if status_filter == s %}bg-blue-600 text-white border-blue-600{% else %}bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100{% endif %}">
+            {{ s|title }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+
+
+  <!-- Dispute Cards List -->
+  <div id="dispute-list" class="space-y-4 max-h-[70vh] overflow-y-auto">
+    {% for d in disputes %}
+    <div class="bg-white border border-border rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
+      <div class="flex justify-between items-center mb-4">
+        <div class="flex items-center space-x-4">
+          <!-- User Avatar -->
+          <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-sm font-semibold">
+            {{ d.user.username|slice:":2"|upper }}
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800">{{ d.issue_type|capfirst }}</h3>
+            <p class="text-xs text-gray-500">User: {{ d.user.username }} • {{ d.created_at|naturaltime }}</p>
+          </div>
+        </div>
+        <span class="px-3 py-1.5 text-xs rounded-full font-medium tracking-wide
+          {% if d.status == 'pending' %}bg-yellow-100 text-yellow-800 border border-yellow-200
+          {% elif d.status == 'under_review' %}bg-blue-100 text-blue-800 border border-blue-200
+          {% elif d.status == 'resolved' %}bg-green-100 text-green-800 border border-green-200
+          {% elif d.status == 'rejected' %}bg-red-100 text-red-700 border border-red-200
+          {% endif %}">
+          {{ d.status|title }}
+        </span>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm text-secondary">
+        <p><span class="font-medium text-dark">Dispute ID:</span> #{{ d.id }}</p>
+        <p><span class="font-medium text-dark">Assigned Agent:</span> {{ d.agent.username|default:"—" }}</p>
+        <p><span class="font-medium text-dark">Messages:</span> {{ d.messages.count }}</p>
+      </div>
+
+      <div class="mt-5 flex justify-end">
+        <a href="{% url 'agents:agent_dispute_detail' d.id %}"
+           class="px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-all duration-150">
+           View Details
+        </a>
+      </div>
+    </div>
+    {% empty %}
+    <div class="bg-white border border-border rounded-xl p-6 text-center text-gray-500">
+      No disputes assigned to you yet.
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- AJAX Filter Script -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const container = document.querySelector("#dispute-list");
+
+  function activateLink(link) {
+    document.querySelectorAll(".filter-link").forEach(a => {
+      a.classList.remove("bg-blue-600","text-white","border-blue-600");
+      a.classList.add("bg-gray-50","text-gray-700","border-gray-200");
+    });
+    link.classList.add("bg-blue-600","text-white","border-blue-600");
+    link.classList.remove("bg-gray-50","text-gray-700","border-gray-200");
+  }
+
+  document.querySelectorAll(".filter-link").forEach(link => {
+    link.addEventListener("click", function (e) {
+      e.preventDefault();
+      activateLink(this);
+      container.innerHTML = `<div class="p-6 text-center text-gray-500 animate-pulse">Loading disputes...</div>`;
+      fetch(this.href, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const newDoc = parser.parseFromString(html, "text/html");
+          const newList = newDoc.querySelector("#dispute-list").innerHTML;
+          container.innerHTML = newList;
+          window.history.pushState({}, "", this.href);
+        })
+        .catch(() => {
+          container.innerHTML = `<div class="p-6 text-center text-red-500">Failed to load disputes.</div>`;
+        });
+    });
+  });
+});
+</script>
+{% endblock %}
