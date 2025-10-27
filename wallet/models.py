@@ -214,52 +214,73 @@ def create_user_wallet(sender, instance, created, **kwargs):
 
 
 class Dispute(models.Model):
-    STATUS_CHOICES = [
-        ("pending", "Pending"),
-        ("under_review", "Under Review"),
-        ("resolved", "Resolved"),
-        ("rejected", "Rejected"),
+    INITIATOR_CHOICES = [
+        ('user', 'User'),
+        ('agent', 'Agent'),
     ]
 
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="user_disputes"
-    )
-    agent = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="agent_disputes",
-        null=True, blank=True
-    )
-    transaction = models.ForeignKey(
-        "Transaction", on_delete=models.CASCADE, related_name="disputes"
-    )
-    subject = models.CharField(max_length=255)
-    description = models.TextField()
-    status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default="pending"
-    )
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('under_review', 'Under Review'),
+        ('resolved', 'Resolved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="user_disputes")
+    agent = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="agent_disputes")
+    transaction = models.ForeignKey(Transaction, on_delete=models.SET_NULL, null=True, blank=True)
+    initiator_type = models.CharField(max_length=10, choices=INITIATOR_CHOICES)
+    issue_type = models.CharField(max_length=255)
+    details = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    class Meta:
-        ordering = ["-created_at"]
-
     def __str__(self):
-        return f"Dispute #{self.id} - {self.subject}"
-
-    @property
-    def last_message(self):
-        return self.messages.order_by("-timestamp").first()
+        return f"{self.issue_type} - {self.status}"
 
 
 class DisputeMessage(models.Model):
     dispute = models.ForeignKey(
-        Dispute, on_delete=models.CASCADE, related_name="messages"
+        "Dispute",
+        on_delete=models.CASCADE,
+        related_name="messages"
     )
-    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    sender = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="sent_dispute_messages"
+    )
     message = models.TextField()
+    reply_to = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="replies"
+    )
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["timestamp"]
+        ordering = ["timestamp"]  # oldest → newest
+        verbose_name = "Dispute Message"
+        verbose_name_plural = "Dispute Messages"
 
     def __str__(self):
-        return f"Message by {self.sender.username} on Dispute #{self.dispute.id}"
+        return f"Message by {self.sender.username} on Dispute {self.dispute.id}"
+
+    def is_reply(self):
+        """Return True if this message is a reply to another message."""
+        return self.reply_to_id is not None
+
+    def get_sender_role(self):
+        """Identify who sent the message: admin, agent, or user."""
+        if self.sender.is_staff:
+            return "admin"
+        if hasattr(self.sender, "profile") and getattr(self.sender.profile, "is_agent", False):
+            return "agent"
+        return "user"
+
+    def formatted_time(self):
+        """Return a human-readable timestamp."""
+        return self.timestamp.strftime("%b %d, %Y %I:%M %p")
