@@ -9,11 +9,14 @@ from decimal import Decimal, InvalidOperation
 from django.db import models
 
 from .models import Wallet
-from payments.models import Transaction
+from payments.models import DepositRequest, Transaction
 from accounts.utils import create_notification
 from payments.forms import WithdrawalAmountForm, WithdrawalReceiptForm
 from payments.models import WithdrawalRequest
 
+from wallet.models import Dispute, DisputeMessage
+from wallet.models import Transaction
+from django.contrib import messages as django_messages
 
 # ✅ 1. Wallet Balance API
 @login_required
@@ -219,3 +222,113 @@ def user_withdrawal_list(request):
     """List user's withdrawal requests."""
     withdrawals = WithdrawalRequest.objects.filter(user=request.user).order_by("-created_at")
     return render(request, "dashboard/withdrawal_list.html", {"withdrawals": withdrawals})
+
+
+# --- Create Dispute ---
+@login_required
+def create_dispute(request, transaction_id):
+    transaction = get_object_or_404(Transaction, transaction_id=transaction_id)
+
+    # Try to find related deposit or withdrawal request using wallet + amount
+    deposit = DepositRequest.objects.filter(
+        wallet=transaction.receiver,  # user’s wallet in deposit
+        amount=transaction.amount
+    ).order_by('-created_at').first()
+
+    withdrawal = WithdrawalRequest.objects.filter(
+        wallet=transaction.sender,  # user’s wallet in withdrawal
+        amount=transaction.amount
+    ).order_by('-created_at').first()
+
+    # Get the agent (if any)
+    agent = None
+    if deposit and deposit.agent:
+        agent = deposit.agent
+    elif withdrawal and withdrawal.agent:
+        agent = withdrawal.agent
+
+    # Prevent duplicate disputes
+    existing_dispute = Dispute.objects.filter(transaction=transaction, user=request.user).first()
+    if existing_dispute:
+        messages.warning(request, "You’ve already opened a dispute for this transaction.")
+        return redirect("wallet:dispute_detail", dispute_id=existing_dispute.id)
+
+    if request.method == "POST":
+        issue_type = request.POST.get("issue_type")
+        message_text = request.POST.get("description")
+
+        # ✅ Create the main Dispute record
+        dispute = Dispute.objects.create(
+            transaction=transaction,
+            user=request.user,
+            agent=agent,
+            issue_type=issue_type,
+            initiator_type="user",
+        )
+
+        # ✅ Create the first message (if any)
+        if message_text:
+            DisputeMessage.objects.create(
+                dispute=dispute,
+                sender=request.user,
+                message=message_text,
+            )
+
+        messages.success(request, "Your dispute has been submitted successfully.")
+        return redirect("wallet:dispute_list")
+
+    return render(request, "wallet/disputes/create_dispute.html", {"transaction": transaction})
+
+
+
+
+# --- Dispute List ---
+@login_required
+def dispute_list(request):
+    status_filter = request.GET.get("status")
+
+    disputes = Dispute.objects.filter(user=request.user).order_by("-created_at")
+
+    if status_filter:
+        disputes = disputes.filter(status=status_filter)
+
+    context = {
+        "disputes": disputes,
+        "status_filter": status_filter,
+    }
+    return render(request, "dashboard/disputes_list.html", context)
+
+
+@login_required
+def dispute_detail(request, dispute_id):
+    dispute = get_object_or_404(Dispute, id=dispute_id)
+    chat_messages = DisputeMessage.objects.filter(dispute=dispute).order_by('timestamp')
+
+    if request.method == "POST":
+        message_text = request.POST.get("message")
+        reply_to_id = request.POST.get("reply_to")
+        
+        if message_text:
+            msg = DisputeMessage.objects.create(
+                dispute=dispute,
+                sender=request.user,
+                message=message_text
+            )
+            if reply_to_id:
+                try:
+                    reply_to_msg = DisputeMessage.objects.get(id=reply_to_id)
+                    msg.reply_to = reply_to_msg
+                    msg.save()
+                except DisputeMessage.DoesNotExist:
+                    pass
+
+            # Optional: show a success message once
+            django_messages.success(request, "Your message has been sent.")
+
+        return redirect('wallet:dispute_detail', dispute_id=dispute.id)
+
+    context = {
+        'dispute': dispute,
+        'chat_messages': chat_messages,  # renamed to avoid conflict
+    }
+    return render(request, 'dashboard/dispute_detail.html', context)
