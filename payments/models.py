@@ -152,11 +152,11 @@ class DepositRequest(models.Model):
 
             # transaction record (single transfer)
             Transaction.objects.create(
-                transaction_type='transfer',
+                transaction_type='deposit',
                 amount=dep.amount,
                 sender=agent_wallet,
                 receiver=user_wallet,
-                description=f'P2P transfer for {dep.reference}',
+                description=f'P2P deposit for {dep.reference}',
                 status='completed',
             )
 
@@ -364,11 +364,11 @@ class WithdrawalRequest(models.Model):
 
             # create transfer transaction
             Transaction.objects.create(
-                transaction_type="transfer",
+                transaction_type="withdrawal",
                 amount=req.amount,
                 sender=user_wallet,
                 receiver=agent_wallet,
-                description=f"P2P transfer for {req.reference}",
+                description=f"P2P withdrawal for {req.reference}",
                 status="completed",
             )
 
