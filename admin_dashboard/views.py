@@ -626,8 +626,12 @@ def disputes_list(request):
 @login_required
 @user_passes_test(is_admin_user)
 def dispute_detail(request, pk):
-    dispute = get_object_or_404(Dispute, pk=pk)
-    messages = dispute.messages.select_related("sender")
+    dispute = (
+        Dispute.objects.select_related("user", "agent__profile", "transaction")
+        .prefetch_related("messages__sender")
+        .get(pk=pk)
+    )
+    messages = dispute.messages.all()
 
     if request.method == "POST":
         message = request.POST.get("message")
@@ -638,17 +642,83 @@ def dispute_detail(request, pk):
                 dispute=dispute,
                 sender=request.user,
                 message=message,
-                timestamp=timezone.now(),
             )
 
         if action in ["resolved", "rejected", "under_review"]:
             dispute.status = action
-            dispute.save()
+            dispute.save(update_fields=["status"])
 
-        return redirect("admin_dispute_detail", pk=dispute.pk)
+        return redirect("admin_dashboard:admin_dispute_detail", pk=dispute.pk)
 
     context = {
         "dispute": dispute,
         "messages": messages,
     }
     return render(request, "admin_dashboard/dispute_detail.html", context)
+
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def resolve_dispute(request, dispute_id):
+    dispute = get_object_or_404(Dispute, id=dispute_id)
+
+    if dispute.status == 'resolved':
+        messages.warning(request, "This dispute is already resolved.")
+        return redirect('admin_dashboard:dispute_detail', dispute_id=dispute.id)
+
+    transaction = dispute.transaction
+
+    # Case: No linked transaction
+    if not transaction:
+        dispute.status = 'resolved'
+        dispute.resolved_by = request.user
+        dispute.resolved_at = timezone.now()
+        dispute.save()
+        messages.success(request, f"Dispute #{dispute.id} resolved (no transaction involved).")
+        return redirect('admin_dashboard:dispute_detail', dispute_id=dispute.id)
+
+    # Determine if user needs credit
+    credit_user = False
+    issue = (dispute.issue_type or "").strip().lower()
+
+    # Only credit user for realistic escrow failures
+    if transaction.transaction_type == "deposit":
+        # In your P2P escrow, deposits are secure, so only "Other issue" might trigger manual credit
+        if issue == "other issue":
+            credit_user = True
+    elif transaction.transaction_type == "withdrawal":
+        if issue in ["wrong amount received", "other issue"]:
+            credit_user = True
+    elif transaction.transaction_type == "transfer":
+        if issue in ["duplicate transfer", "transfer failed but funds deducted", "other issue"]:
+            credit_user = True
+        # "Incorrect recipient details" does NOT trigger automatic credit in escrow
+        # "Money not received by recipient" also doesn't because escrow guarantees transfer
+
+    # Credit user if needed
+    if credit_user:
+        wallet, _ = Wallet.objects.get_or_create(user=dispute.user)
+        wallet.balance += transaction.amount
+        wallet.save()
+
+        # Optional: record a dispute credit transaction
+        # Transaction.objects.create(
+        #     user=dispute.user,
+        #     transaction_type="dispute_credit",
+        #     amount=transaction.amount,
+        #     reference=f"Dispute #{dispute.id} resolution"
+        # )
+
+    # Mark dispute resolved
+    dispute.status = 'resolved'
+    dispute.resolved_by = request.user
+    dispute.resolved_at = timezone.now()
+    dispute.save()
+
+    messages.success(
+        request,
+        f"Dispute #{dispute.id} resolved" + (f" and user credited ₦{transaction.amount:.2f}" if credit_user else "")
+    )
+
+    return redirect('admin_dashboard:dispute_detail', dispute_id=dispute.id)
