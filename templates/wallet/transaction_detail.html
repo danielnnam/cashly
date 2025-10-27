@@ -8,145 +8,188 @@
 
 {% block content %}
 <div class="flex justify-center px-2 sm:px-4 md:px-6 lg:px-0">
-    <div class="bg-white rounded-2xl border border-border shadow-lg p-5 sm:p-6 md:p-8 w-full max-w-lg space-y-6">
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-md p-6 sm:p-8 w-full max-w-lg space-y-6">
 
-        <!-- Header Icon -->
-        <div class="flex justify-center">
-            <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center shadow-sm
-                {% if transaction.sender == wallet %}
-                    bg-red-50 text-red-600
-                {% else %}
-                    bg-green-50 text-green-600
-                {% endif %}">
-                {% if transaction.transaction_type == "transfer" %}
-                    <i class="fas fa-exchange-alt text-2xl sm:text-3xl"></i>
-                {% elif transaction.transaction_type == "deposit" %}
-                    <i class="fas fa-arrow-down text-2xl sm:text-3xl"></i>
-                {% elif transaction.transaction_type == "withdrawal" %}
-                    <i class="fas fa-arrow-up text-2xl sm:text-3xl"></i>
-                {% else %}
-                    <i class="fas fa-receipt text-2xl sm:text-3xl"></i>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Amount -->
-        <div class="text-center break-words">
-            <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight 
-                {% if transaction.sender == wallet %}
-                    text-red-600
-                {% else %}
-                    text-green-600
-                {% endif %}">
-                {% if transaction.sender == wallet %}
-                    -₦{{ transaction.amount|floatformat:2|intcomma }}
-                {% else %}
-                    +₦{{ transaction.amount|floatformat:2|intcomma }}
-                {% endif %}
-            </h2>
-            <p class="text-secondary text-sm sm:text-base mt-1 capitalize font-medium">{{ transaction.status }}</p>
-        </div>
-
-        <!-- Info -->
-        <div class="divide-y divide-border text-sm sm:text-[15px] break-words">
-            <div class="py-3 flex justify-between gap-2">
-                <span class="text-secondary">Transaction ID</span>
-                <span class="font-semibold text-right truncate max-w-[65%]">{{ transaction.transaction_id }}</span>
-            </div>
-            <div class="py-3 flex justify-between gap-2">
-                <span class="text-secondary">Type</span>
-                <span class="font-semibold capitalize text-right">{{ transaction.transaction_type }}</span>
-            </div>
-            <div class="py-3 flex justify-between gap-2">
-                <span class="text-secondary">Date</span>
-                <span class="font-semibold text-right">{{ transaction.created_at|date:"M d, Y H:i" }}</span>
-            </div>
-            {% if transaction.sender and transaction.receiver %}
-            <div class="py-3 flex justify-between gap-2">
-                <span class="text-secondary">From</span>
-                <span class="font-semibold text-right truncate max-w-[65%]">
-                    {{ transaction.sender.user.get_full_name|default:transaction.sender.user.username }}
-                </span>
-            </div>
-            <div class="py-3 flex justify-between gap-2">
-                <span class="text-secondary">To</span>
-                <span class="font-semibold text-right truncate max-w-[65%]">
-                    {{ transaction.receiver.user.get_full_name|default:transaction.receiver.user.username }}
-                </span>
-            </div>
-            {% endif %}
-            {% if transaction.description %}
-            <div class="py-3 flex flex-col sm:flex-row justify-between gap-2">
-                <span class="text-secondary">Description</span>
-                <span class="font-semibold text-right text-wrap break-words sm:max-w-[65%]">
-                    {{ transaction.description }}
-                </span>
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- Back / Actions -->
-        <div class="flex flex-col sm:flex-row justify-center sm:justify-between items-center gap-3 pt-4">
-            <a href="{% url 'wallet:history' %}" 
-               class="inline-flex items-center text-primary hover:text-primary/80 font-medium transition duration-200">
-                <i class="fas fa-arrow-left mr-2"></i>
-                Back to History
-            </a>
-
-            <button onclick="downloadReceipt()" 
-                class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 shadow transition">
-                <i class="fas fa-download mr-1"></i> Download Receipt
-            </button>
-        </div>
-
+    <!-- Header Icon -->
+    <div class="flex justify-center">
+      <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center shadow
+        {% if transaction.sender == wallet %}
+          bg-red-50 text-red-600
+        {% else %}
+          bg-green-50 text-green-600
+        {% endif %}">
+        {% if transaction.transaction_type == "transfer" %}
+          <i class="fas fa-exchange-alt text-2xl sm:text-3xl"></i>
+        {% elif transaction.transaction_type == "deposit" %}
+          <i class="fas fa-arrow-down text-2xl sm:text-3xl"></i>
+        {% elif transaction.transaction_type == "withdrawal" %}
+          <i class="fas fa-arrow-up text-2xl sm:text-3xl"></i>
+        {% else %}
+          <i class="fas fa-receipt text-2xl sm:text-3xl"></i>
+        {% endif %}
+      </div>
     </div>
+
+    <!-- Amount -->
+    <div class="text-center">
+      <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight
+        {% if transaction.sender == wallet %}
+          text-red-600
+        {% else %}
+          text-green-600
+        {% endif %}">
+        {% if transaction.sender == wallet %}
+          -₦{{ transaction.amount|floatformat:2|intcomma }}
+        {% else %}
+          +₦{{ transaction.amount|floatformat:2|intcomma }}
+        {% endif %}
+      </h2>
+      <p class="text-gray-500 text-sm sm:text-base mt-1 capitalize font-medium">{{ transaction.status }}</p>
+    </div>
+
+    <!-- Info -->
+    <div class="divide-y divide-gray-200 text-sm sm:text-[15px]">
+      <div class="py-3 flex justify-between">
+        <span class="text-gray-500">Transaction ID</span>
+        <span class="font-semibold text-right">{{ transaction.transaction_id }}</span>
+      </div>
+      <div class="py-3 flex justify-between">
+        <span class="text-gray-500">Type</span>
+        <span class="font-semibold capitalize text-right">{{ transaction.transaction_type }}</span>
+      </div>
+      <div class="py-3 flex justify-between">
+        <span class="text-gray-500">Date</span>
+        <span class="font-semibold text-right">{{ transaction.created_at|date:"M d, Y H:i" }}</span>
+      </div>
+
+      {% if transaction.sender and transaction.receiver %}
+      <div class="py-3 flex justify-between">
+        <span class="text-gray-500">From</span>
+        <span class="font-semibold text-right truncate max-w-[65%]">
+          {{ transaction.sender.user.get_full_name|default:transaction.sender.user.username }}
+        </span>
+      </div>
+      <div class="py-3 flex justify-between">
+        <span class="text-gray-500">To</span>
+        <span class="font-semibold text-right truncate max-w-[65%]">
+          {{ transaction.receiver.user.get_full_name|default:transaction.receiver.user.username }}
+        </span>
+      </div>
+      {% endif %}
+
+      {% if transaction.description %}
+      <div class="py-3 flex justify-between">
+        <span class="text-gray-500">Description</span>
+        <span class="font-semibold text-right">{{ transaction.description }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Buttons -->
+    <div class="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4">
+      <a href="{% url 'wallet:history' %}"
+        class="inline-flex items-center text-green-700 hover:text-green-600 font-medium transition">
+        <i class="fas fa-arrow-left mr-2"></i> Back to History
+      </a>
+
+      <div class="flex gap-3">
+        <button onclick="downloadReceipt()"
+          class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition shadow">
+          <i class="fas fa-download mr-1"></i> Receipt
+        </button>
+
+        <!-- Report Button -->
+        <button onclick="openModal()"
+          class="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg text-sm font-medium hover:bg-gray-200 border transition">
+          <i class="fas fa-flag mr-1 text-red-500"></i> Report Issue
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- Hidden Printable Receipt -->
+<!-- Modal -->
+<div id="reportModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+  <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-lg">
+    <h3 class="text-xl font-semibold text-gray-800 mb-3">Report an Issue</h3>
+    <form method="post" action="{% url 'wallet:create_dispute' transaction.transaction_id %}">
+      {% csrf_token %}
+      <div class="mb-4">
+        <label class="block text-gray-600 mb-1 text-sm">Select Issue Type</label>
+        <select name="issue_type" required class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-green-500">
+            <option value="">Select...</option>
+
+            {% if transaction.transaction_type == "transfer" %}
+                <option>Incorrect recipient details</option>
+                <option>Duplicate transfer</option>
+                <option>Other issue</option>
+            {% elif transaction.transaction_type == "deposit" %}
+                <option>Other issue</option>
+            {% elif transaction.transaction_type == "withdrawal" %}
+                <option>Wrong amount received</option>
+                <option>Other issue</option>
+            {% endif %}
+        </select>
+
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-gray-600 mb-1 text-sm">Additional Details (optional)</label>
+        <textarea name="description" rows="3"
+          class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-green-500"
+          placeholder="Describe the issue briefly..."></textarea>
+      </div>
+
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="closeModal()"
+          class="px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-100 transition">Cancel</button>
+        <button type="submit"
+          class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">Submit</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Receipt Template -->
 <div id="receipt-template" class="hidden">
-    <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 380px; margin: auto; border: 1px solid #e5e7eb; border-radius: 10px;">
-        <div style="text-align: center; margin-bottom: 15px;">
-            <div style="font-weight: bold; font-size: 20px; color: #059669;">Cashly</div>
-            <p style="font-size: 13px; color: #6b7280;">Transaction Receipt</p>
-        </div>
-        <hr style="border: none; border-top: 1px dashed #ccc; margin: 10px 0;">
-        <p style="font-size: 14px;"><strong>Amount:</strong> ₦{{ transaction.amount|floatformat:2|intcomma }}</p>
-        <p style="font-size: 14px;"><strong>Type:</strong> {{ transaction.transaction_type|title }}</p>
-        <p style="font-size: 14px;"><strong>Status:</strong> {{ transaction.status|title }}</p>
-        <p style="font-size: 14px;"><strong>Date:</strong> {{ transaction.created_at|date:"M d, Y H:i" }}</p>
-        <p style="font-size: 14px;"><strong>Reference:</strong> {{ transaction.transaction_id }}</p>
-        {% if transaction.sender and transaction.receiver %}
-        <p style="font-size: 14px;"><strong>From:</strong> {{ transaction.sender.user.get_full_name|default:transaction.sender.user.username }}</p>
-        <p style="font-size: 14px;"><strong>To:</strong> {{ transaction.receiver.user.get_full_name|default:transaction.receiver.user.username }}</p>
-        {% endif %}
-        {% if transaction.description %}
-        <p style="font-size: 14px;"><strong>Description:</strong> {{ transaction.description }}</p>
-        {% endif %}
-        <hr style="border: none; border-top: 1px dashed #ccc; margin: 10px 0;">
-        <div style="text-align: center; font-size: 13px; color: #9ca3af;">
-            Thank you for using <strong>Cashly</strong> 💚
-        </div>
+  <div style="font-family: Arial; padding: 20px; max-width: 380px; border: 1px solid #e5e7eb; border-radius: 10px;">
+    <div style="text-align:center; margin-bottom:10px;">
+      <h2 style="color:#059669; font-size:20px; margin-bottom:5px;">Cashly</h2>
+      <p style="font-size:13px; color:#6b7280;">Transaction Receipt</p>
     </div>
+    <hr>
+    <p><strong>Amount:</strong> ₦{{ transaction.amount|floatformat:2|intcomma }}</p>
+    <p><strong>Type:</strong> {{ transaction.transaction_type|title }}</p>
+    <p><strong>Status:</strong> {{ transaction.status|title }}</p>
+    <p><strong>Date:</strong> {{ transaction.created_at|date:"M d, Y H:i" }}</p>
+    <p><strong>Reference:</strong> {{ transaction.transaction_id }}</p>
+    {% if transaction.sender and transaction.receiver %}
+    <p><strong>From:</strong> {{ transaction.sender.user.get_full_name|default:transaction.sender.user.username }}</p>
+    <p><strong>To:</strong> {{ transaction.receiver.user.get_full_name|default:transaction.receiver.user.username }}</p>
+    {% endif %}
+    {% if transaction.description %}
+    <p><strong>Description:</strong> {{ transaction.description }}</p>
+    {% endif %}
+    <hr>
+    <div style="text-align:center; color:#9ca3af; font-size:13px;">Thanks for using Cashly 💚</div>
+  </div>
 </div>
 
 <script>
 function downloadReceipt() {
-    const receipt = document.getElementById("receipt-template").innerHTML;
-    const win = window.open("", "PrintReceipt", "width=400,height=600");
-    win.document.write(`
-        <html>
-            <head>
-                <title>Cashly Receipt</title>
-                <style>
-                    body { font-family: Arial, sans-serif; background: #f9fafb; margin: 0; padding: 20px; }
-                </style>
-            </head>
-            <body>${receipt}</body>
-        </html>
-    `);
-    win.document.close();
-    win.focus();
-    win.print();
+  const receipt = document.getElementById("receipt-template").innerHTML;
+  const win = window.open("", "PrintReceipt", "width=400,height=600");
+  win.document.write(`<html><head><title>Receipt</title></head><body>${receipt}</body></html>`);
+  win.document.close();
+  win.print();
+}
+
+function openModal() {
+  document.getElementById("reportModal").classList.remove("hidden");
+}
+
+function closeModal() {
+  document.getElementById("reportModal").classList.add("hidden");
 }
 </script>
 {% endblock %}
