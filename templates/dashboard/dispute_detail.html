@@ -1,0 +1,151 @@
+{% extends "dashboard/base.html" %}
+{% load humanize %}
+
+{% block title %}Dispute #{{ dispute.id }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+  <!-- Header Section -->
+  <div class="bg-white rounded-2xl shadow p-6 border border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-green-700 mb-1">
+        {{ dispute.issue_type|title }}
+      </h1>
+      <p class="text-gray-600 text-sm">
+        <span class="font-medium">Transaction:</span> {{ dispute.transaction.transaction_id }} <br>
+        <span class="font-medium">Agent:</span>
+        {% if dispute.agent %}
+          {{ dispute.agent.username }}
+        {% else %}
+          <span class="text-gray-400">N/A</span>
+        {% endif %}
+      </p>
+    </div>
+
+    <!-- Status -->
+    <div class="mt-3 sm:mt-0">
+      {% if dispute.status == "pending" %}
+        <span class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-medium">Pending</span>
+      {% elif dispute.status == "under_review" %}
+        <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">Under Review</span>
+      {% elif dispute.status == "resolved" %}
+        <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">Resolved</span>
+      {% elif dispute.status == "rejected" %}
+        <span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-medium">Rejected</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Chat Section -->
+  <div class="bg-white rounded-2xl shadow border border-gray-100 p-6 flex flex-col h-[70vh] relative">
+    <h2 class="text-lg font-semibold text-green-800 mb-3">Conversation</h2>
+
+    <!-- Chat messages -->
+    <div id="chat-container"
+         class="flex-grow overflow-y-auto p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-4 scroll-smooth shadow-inner">
+      {% for msg in chat_messages %}
+        {% if msg.sender == request.user %}
+          <!-- User message (right side) -->
+          <div class="flex justify-end">
+            <div class="max-w-[75%] bg-green-100 text-green-900 px-4 py-2 rounded-2xl rounded-tr-none shadow-sm relative group">
+              {% if msg.reply_to %}
+                <div class="border-l-4 border-green-400 pl-2 mb-2 text-xs text-gray-600">
+                  Replying to: "{{ msg.reply_to.message|truncatechars:40 }}"
+                </div>
+              {% endif %}
+              <p class="text-sm">{{ msg.message }}</p>
+              <div class="flex justify-between items-center mt-1 text-xs text-green-700">
+                <span>{{ msg.created_at|naturaltime }}</span>
+                <button type="button" class="opacity-0 group-hover:opacity-100 transition text-xs text-green-700 hover:underline"
+                        onclick="setReply('{{ msg.id }}', '{{ msg.message|escapejs }}')">↩️ Reply</button>
+              </div>
+            </div>
+          </div>
+
+        {% elif dispute.agent and msg.sender == dispute.agent %}
+          <!-- Agent message (left side) -->
+          <div class="flex justify-start">
+            <div class="max-w-[75%] bg-gray-100 text-gray-900 px-4 py-2 rounded-2xl rounded-tl-none shadow-sm relative group">
+              {% if msg.reply_to %}
+                <div class="border-l-4 border-blue-400 pl-2 mb-2 text-xs text-gray-600">
+                  Replying to: "{{ msg.reply_to.message|truncatechars:40 }}"
+                </div>
+              {% endif %}
+              <p class="text-sm"><b>{{ dispute.agent.username }}</b>: {{ msg.message }}</p>
+              <div class="flex justify-between items-center mt-1 text-xs text-blue-600">
+                <span>{{ msg.created_at|naturaltime }}</span>
+                <button type="button" class="opacity-0 group-hover:opacity-100 transition text-xs text-blue-700 hover:underline"
+                        onclick="setReply('{{ msg.id }}', '{{ msg.message|escapejs }}')">↩️ Reply</button>
+              </div>
+            </div>
+          </div>
+
+        {% elif msg.sender.is_staff %}
+          <!-- Admin message -->
+          <div class="flex justify-start">
+            <div class="bg-blue-100 text-blue-900 px-4 py-2 rounded-2xl max-w-[75%] rounded-tl-none shadow-sm relative group">
+              {% if msg.reply_to %}
+                <div class="border-l-4 border-blue-400 pl-2 mb-2 text-xs text-gray-600">
+                  Replying to: “{{ msg.reply_to.message|truncatechars:40 }}”
+                </div>
+              {% endif %}
+              <p class="text-sm">
+                <span class="font-bold bg-blue-600 text-white px-2 py-0.5 rounded-md text-xs mr-1">Admin</span>
+                {{ msg.message }}
+              </p>
+              <div class="flex justify-between items-center mt-1 text-xs text-blue-700">
+                <span>{{ msg.timestamp|naturaltime }}</span>
+                <button type="button" class="opacity-0 group-hover:opacity-100 transition text-xs text-blue-700 hover:underline"
+                  onclick="setReply('{{ msg.id }}', '{{ msg.message|escapejs }}')">↩️ Reply</button>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+        
+      {% empty %}
+        <p class="text-gray-500 text-sm text-center py-10">No messages yet.</p>
+      {% endfor %}
+    </div>
+
+      <!-- Reply Form -->
+      <form method="post" class="mt-5 border-t pt-3 space-y-3">
+        {% csrf_token %}
+        <input type="hidden" name="reply_to" id="reply_to_id">
+
+        <div id="reply-preview" class="hidden bg-gray-100 p-2 rounded-lg text-sm">
+          Replying to: <span id="reply-text" class="font-medium"></span>
+          <button type="button" onclick="cancelReply()" class="text-red-500 ml-2 text-xs">Cancel</button>
+        </div>
+
+        <textarea name="message" rows="2"
+          class="w-full border rounded-xl p-3 focus:ring-2 focus:ring-green-500 text-sm resize-none"
+          placeholder="Type your message..."></textarea>
+
+        <div class="flex justify-end">
+          <button type="submit"
+            class="bg-green-700 hover:bg-green-800 text-white px-6 py-2 rounded-xl shadow-sm transition text-sm font-semibold">
+            Send
+          </button>
+        </div>
+      </form>
+  </div>
+</div>
+
+<!-- Scroll & Reply JS -->
+<script>
+  const chatContainer = document.getElementById('chat-container');
+  if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+
+  function setReply(msgId, text) {
+    document.getElementById('reply_to_id').value = msgId;
+    document.getElementById('reply-preview').classList.remove('hidden');
+    document.getElementById('reply-text').textContent = text.slice(0, 60);
+  }
+
+  function cancelReply() {
+    document.getElementById('reply_to_id').value = '';
+    document.getElementById('reply-preview').classList.add('hidden');
+  }
+</script>
+{% endblock %}
