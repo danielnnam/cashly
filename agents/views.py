@@ -1,4 +1,6 @@
+from datetime import timezone
 from decimal import Decimal
+from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -9,10 +11,12 @@ from payments.models import DepositRequest, Transaction
 from wallet.models import Wallet
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
-from accounts.models import Profile
+from accounts.models import Notification, Profile
 from django.contrib.auth import login, logout, authenticate
 from admin_dashboard.utils import log_activity  
 from django.contrib import messages
+from wallet.models import Dispute, DisputeMessage
+
 # Create your views here.
 
 @login_required
@@ -169,6 +173,72 @@ def agent_history(request):
         'wallet': wallet,
     }
     return render(request, 'agents/history.html', context)
+
+
+
+@login_required
+def agent_dispute_list(request):
+    # Get status filter from query params
+    status_filter = request.GET.get('status')
+
+    # Filter disputes assigned to this agent
+    disputes = Dispute.objects.filter(agent=request.user)
+
+    if status_filter:
+        disputes = disputes.filter(status=status_filter)
+
+    disputes = disputes.order_by('-created_at')
+
+    # List of all possible statuses for filter links
+    status_filters = ['pending', 'under_review', 'resolved', 'rejected']
+
+    context = {
+        'disputes': disputes,
+        'status_filter': status_filter,
+        'status_filters': status_filters,
+    }
+    return render(request, 'agents/disputes_list.html', context)
+
+
+@login_required
+def agent_dispute_detail(request, dispute_id):
+    dispute = get_object_or_404(Dispute, id=dispute_id, agent=request.user)
+
+    # --- AJAX Polling for new messages ---
+    if request.GET.get("ajax") == "true":
+        messages = DisputeMessage.objects.filter(dispute=dispute).order_by("timestamp")
+        messages_data = [
+            {
+                "sender": "You" if msg.sender == request.user else msg.sender.username,
+                "is_agent": msg.sender == dispute.agent,
+                "is_user": msg.sender == dispute.user,
+                "is_admin": msg.sender.is_staff,
+                "message": msg.message,
+                "timestamp": timezone.localtime(msg.timestamp).strftime("%b %d, %Y %H:%M"),
+            }
+            for msg in messages
+        ]
+        return JsonResponse({"messages": messages_data})
+
+    # --- Handle POST actions ---
+    if request.method == "POST":
+        action = request.POST.get("action")
+        message_text = request.POST.get("message")
+
+        # Send message
+        if message_text:
+            DisputeMessage.objects.create(
+                dispute=dispute, sender=request.user, message=message_text
+            )
+
+        # Update status (optional)
+        if action in ["resolved", "under_review", "rejected"]:
+            dispute.status = action
+            dispute.save()
+
+    messages = DisputeMessage.objects.filter(dispute=dispute).order_by("timestamp")
+    return render(request, "agents/disputes_detail.html", {"dispute": dispute, "messages": messages})
+
 
 
 
