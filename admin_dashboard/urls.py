@@ -25,5 +25,5 @@ urlpatterns = [
     path("transactions/", views.transactions_list, name="transactions"),
     path("disputes/", views.disputes_list, name="admin_disputes_list"),
     path("disputes/<int:pk>/", views.dispute_detail, name="admin_dispute_detail"),
-
+    path('disputes/<int:dispute_id>/resolve/', views.resolve_dispute, name='resolve_dispute'),
 ]
