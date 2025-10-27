@@ -74,11 +74,12 @@
 
         <div class="mt-4 flex justify-between items-center">
           <a 
-            href="{% url 'admin_dispute_detail' d.id %}" 
+            href="{% url 'admin_dashboard:admin_dispute_detail' d.id %}" 
             class="text-green-600 font-medium hover:underline text-sm"
           >
             View Details →
           </a>
+
 
           <div class="flex items-center space-x-1 text-xs text-gray-500">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
