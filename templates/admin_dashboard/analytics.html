@@ -1,0 +1,136 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Analytics - Admin{% endblock %}
+
+{% block content %}
+<div class="space-y-8 p-6">
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="bg-white rounded-2xl p-6 shadow hover:shadow-lg transition">
+      <p class="text-sm text-gray-500">Total Users</p>
+      <h2 class="text-3xl font-bold mt-1">{{ total_users }}</h2>
+    </div>
+    <div class="bg-white rounded-2xl p-6 shadow hover:shadow-lg transition">
+      <p class="text-sm text-gray-500">Active Agents</p>
+      <h2 class="text-3xl font-bold mt-1">{{ total_agents }}</h2>
+    </div>
+    <div class="bg-white rounded-2xl p-6 shadow hover:shadow-lg transition">
+      <p class="text-sm text-gray-500">Total Deposits</p>
+      <h2 class="text-3xl font-bold mt-1 text-green-600">₦{{ total_deposits|floatformat:2 }}</h2>
+    </div>
+    <div class="bg-white rounded-2xl p-6 shadow hover:shadow-lg transition">
+      <p class="text-sm text-gray-500">Total Withdrawals</p>
+      <h2 class="text-3xl font-bold mt-1 text-red-600">₦{{ total_withdrawals|floatformat:2 }}</h2>
+    </div>
+  </div>
+
+  <!-- Charts Section -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="bg-white rounded-2xl p-6 shadow">
+      <h3 class="text-lg font-semibold mb-4">Deposits & Withdrawals Last 7 Days</h3>
+      <canvas id="depositsWithdrawalsChart" class="w-full h-64"></canvas>
+    </div>
+    <div class="bg-white rounded-2xl p-6 shadow">
+      <h3 class="text-lg font-semibold mb-4">Disputes Last 7 Days</h3>
+      <canvas id="disputesChart" class="w-full h-64"></canvas>
+    </div>
+  </div>
+
+  <!-- Top Agents -->
+  <div class="bg-white rounded-2xl p-6 shadow">
+    <h3 class="text-lg font-semibold mb-4">Top Agents by Deposits</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left table-auto">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="px-4 py-2">Agent</th>
+            <th class="px-4 py-2">Total Deposits (₦)</th>
+          </tr>
+        </thead>
+        <tbody id="topAgentsTable">
+          {% for agent in top_agents %}
+          <tr class="border-b hover:bg-gray-50">
+            <td class="px-4 py-2">{{ agent.user.username }}</td>
+            <td class="px-4 py-2">{{ agent.total_deposit|default:0|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="2" class="px-4 py-2 text-center text-gray-500">No agents found</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Chart.js & Dynamic Loading -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+    const depositsCtx = document.getElementById('depositsWithdrawalsChart').getContext('2d');
+    const disputesCtx = document.getElementById('disputesChart').getContext('2d');
+
+    async function fetchChartData() {
+        const res = await fetch("{% url 'admin_dashboard:analytics_chart_data' %}");
+        return await res.json();
+    }
+
+    // Initial fetch
+    let chartData = await fetchChartData();
+
+    const depositsChart = new Chart(depositsCtx, {
+        type: 'line',
+        data: {
+            labels: chartData.dates,
+            datasets: [
+                {
+                    label: 'Deposits',
+                    data: chartData.deposits_amounts,
+                    borderColor: '#22c55e',
+                    backgroundColor: 'rgba(34,197,94,0.2)',
+                    fill: true,
+                    tension: 0.3
+                },
+                {
+                    label: 'Withdrawals',
+                    data: chartData.withdrawals_amounts,
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239,68,68,0.2)',
+                    fill: true,
+                    tension: 0.3
+                }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    const disputesChart = new Chart(disputesCtx, {
+        type: 'bar',
+        data: {
+            labels: chartData.dates,
+            datasets: [{
+                label: 'Disputes',
+                data: chartData.disputes_counts,
+                backgroundColor: '#3b82f6'
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    // Auto-refresh every 30 seconds
+    setInterval(async () => {
+        chartData = await fetchChartData();
+        depositsChart.data.labels = chartData.dates;
+        depositsChart.data.datasets[0].data = chartData.deposits_amounts;
+        depositsChart.data.datasets[1].data = chartData.withdrawals_amounts;
+        depositsChart.update();
+
+        disputesChart.data.labels = chartData.dates;
+        disputesChart.data.datasets[0].data = chartData.disputes_counts;
+        disputesChart.update();
+    }, 30000);
+});
+</script>
+{% endblock %}
