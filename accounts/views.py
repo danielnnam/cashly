@@ -368,3 +368,16 @@ def logout_view(request):
     """Simple logout view"""
     logout(request)
     return redirect('home')
+
+
+def page_not_found_view(request, exception):
+    return render(request, "errors/404.html", status=404)
+
+def server_error_view(request):
+    return render(request, "errors/500.html", status=500)
+
+def permission_denied_view(request, exception):
+    return render(request, "errors/403.html", status=403)
+
+def bad_request_view(request, exception):
+    return render(request, "errors/400.html", status=400)
