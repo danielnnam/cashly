@@ -1,0 +1,43 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Not Found - Cashly</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 flex items-center justify-center h-screen text-center">
+    <div>
+        <img src="{% static 'images/404-error-illustration.webp' %}" alt="404 Not Found" class="mx-auto w-72 mb-6">
+        <h1 class="text-5xl font-bold text-green-600 mb-3">404</h1>
+        <p class="text-gray-700 text-lg mb-6">Oops! The page you’re looking for doesn’t exist or has been moved.</p>
+        {% if request.user.is_authenticated %}
+            {% if request.user.is_superuser %}
+                <a href="{% url 'admin_dashboard:admin_dashboard' %}" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition">
+                    Go to Admin Dashboard
+                </a>
+            {% elif request.path|slice:":8" == "/agents/" %}
+                {# The user is already on an agent route #}
+                <a href="{% url 'agents:dashboard' %}" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition">
+                    Go to Dashboard
+                </a>
+            {% elif request.user.profile.is_agent %}
+                {# User is an agent but currently browsing as a normal user #}
+                <a href="{% url 'dashboard' %}" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition">
+                    Go to Dashboard
+                </a>
+            {% else %}
+                <a href="{% url 'dashboard' %}" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition">
+                    Go to Dashboard
+                </a>
+            {% endif %}
+        {% else %}
+            <button onclick="history.back()" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition">
+                Go Back
+            </button>
+        {% endif %}
+
+    </div>
+</body>
+</html>
