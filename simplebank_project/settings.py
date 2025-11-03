@@ -13,7 +13,7 @@ SECRET_KEY = 'django-insecure-k5y8b4@4cp*)1ruqcd3q3d6i1i+u*_u8-+pw%zafshwl6tg#a7
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '192.168.1.101', 'cashly-1-mqhc.onrender.com']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '192.168.1.101', 'cashly-1-mqhc.onrender.com', '44.226.145.213']
 
 # Application definition
 INSTALLED_APPS = [
