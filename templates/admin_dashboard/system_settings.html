@@ -1,0 +1,119 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}System Settings - Admin{% endblock %}
+{% block page_title %}⚙️ System Settings{% endblock %}
+{% block page_subtitle %}Control core app settings, transaction limits, and platform preferences{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+  <form method="POST" class="space-y-10">
+    {% csrf_token %}
+
+    <!-- Transaction & Fee Settings -->
+    <div class="bg-white p-6 rounded-2xl shadow">
+      <h2 class="text-lg font-semibold text-green-700 mb-4">💰 Transaction & Fee Settings</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div>
+          <label class="text-gray-600 text-sm">Fee (₦1k–₦50k)</label>
+          <input type="number" name="transaction_fee_low" value="{{ settings.transaction_fee_low }}" class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-green-500">
+        </div>
+        <div>
+          <label class="text-gray-600 text-sm">Fee (₦50k+)</label>
+          <input type="number" name="transaction_fee_high" value="{{ settings.transaction_fee_high }}" class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-green-500">
+        </div>
+        <div>
+          <label class="text-gray-600 text-sm">Platform Split (%)</label>
+          <input type="number" name="split_platform" value="{{ settings.split_platform }}" class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-green-500">
+        </div>
+        <div>
+          <label class="text-gray-600 text-sm">Agent Split (%)</label>
+          <input type="number" name="split_agent" value="{{ settings.split_agent }}" class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-green-500">
+        </div>
+        <div>
+          <label class="text-gray-600 text-sm">Escrow Expiry (minutes)</label>
+          <input type="number" name="escrow_expiry_minutes" value="{{ settings.escrow_expiry_minutes }}" class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-green-500">
+        </div>
+      </div>
+    </div>
+
+    <!-- Security Settings -->
+    <div class="bg-white p-6 rounded-2xl shadow">
+      <h2 class="text-lg font-semibold text-green-700 mb-4">🔒 Security Settings</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" name="kyc_required" {% if settings.kyc_required %}checked{% endif %}>
+          <span>KYC Required</span>
+        </label>
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" name="enable_2fa" {% if settings.enable_2fa %}checked{% endif %}>
+          <span>Enable 2FA</span>
+        </label>
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" name="fraud_detection_enabled" {% if settings.fraud_detection_enabled %}checked{% endif %}>
+          <span>Fraud Detection Enabled</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Platform Controls -->
+    <div class="bg-white p-6 rounded-2xl shadow">
+      <h2 class="text-lg font-semibold text-green-700 mb-4">⚙️ Platform Controls</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" name="deposit_enabled" {% if settings.deposit_enabled %}checked{% endif %}>
+          <span>Deposits Enabled</span>
+        </label>
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" name="withdrawal_enabled" {% if settings.withdrawal_enabled %}checked{% endif %}>
+          <span>Withdrawals Enabled</span>
+        </label>
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" name="agent_auto_approval" {% if settings.agent_auto_approval %}checked{% endif %}>
+          <span>Auto-Approve Agents</span>
+        </label>
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" name="maintenance_mode" {% if settings.maintenance_mode %}checked{% endif %}>
+          <span>Maintenance Mode</span>
+        </label>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+        <div>
+          <label class="text-gray-600 text-sm">Support Email</label>
+          <input type="email" name="support_email" value="{{ settings.support_email }}" class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-green-500">
+        </div>
+        <div>
+          <label class="text-gray-600 text-sm">Support Phone</label>
+          <input type="text" name="support_phone" value="{{ settings.support_phone }}" class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-green-500">
+        </div>
+        <div class="col-span-full">
+          <label class="text-gray-600 text-sm">Homepage Banner Message</label>
+          <textarea name="homepage_banner_text" class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-green-500">{{ settings.homepage_banner_text }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- System Monitoring -->
+    <div class="bg-white p-6 rounded-2xl shadow">
+      <h2 class="text-lg font-semibold text-green-700 mb-4">🧾 System Monitoring</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" name="log_user_activity" {% if settings.log_user_activity %}checked{% endif %}>
+          <span>Log User Activity</span>
+        </label>
+        <div>
+          <label class="text-gray-600 text-sm">Backup Frequency (hours)</label>
+          <input type="number" name="backup_frequency_hours" value="{{ settings.backup_frequency_hours }}" class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-green-500">
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit Button -->
+    <div class="text-right">
+      <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">
+        Save Settings
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
