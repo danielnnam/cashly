@@ -26,4 +26,8 @@ urlpatterns = [
     path("disputes/", views.disputes_list, name="admin_disputes_list"),
     path("disputes/<int:pk>/", views.dispute_detail, name="admin_dispute_detail"),
     path('disputes/<int:dispute_id>/resolve/', views.resolve_dispute, name='resolve_dispute'),
+    path('analytics/', views.analytics, name='analytics'),
+    path('analytics-chart-data/', views.analytics_chart_data, name='analytics_chart_data'),
+    path('settings/', views.admin_settings, name='admin_settings'),
+    path("system-settings/", views.system_settings, name="system_settings"),
 ]
