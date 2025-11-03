@@ -2,6 +2,7 @@ from django.contrib.auth.decorators import user_passes_test, login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Sum, Count
 from django.contrib.auth.models import User
+from admin_dashboard.forms import AdminSettingsForm
 from admin_dashboard.utils import log_activity
 from agents.models import AgentApplication
 from payments.models import DepositRequest, WithdrawalRequest
@@ -11,7 +12,7 @@ from datetime import timedelta
 from django.http import JsonResponse
 from django.utils import timezone
 from django.contrib.admin.views.decorators import staff_member_required
-from .models import ActivityLog
+from .models import ActivityLog, SystemSettings
 from django.db.models import Q
 from django.contrib import messages
 from wallet.models import Wallet
@@ -19,7 +20,8 @@ from accounts.models import Profile, Notification
 from .models import AdminNotification
 from django.db.models import Value, CharField
 from wallet.models import Dispute, DisputeMessage
-
+from django.utils.timezone import now
+from datetime import timedelta
 
 
 def is_admin_user(user):
@@ -722,3 +724,155 @@ def resolve_dispute(request, dispute_id):
     )
 
     return redirect('admin_dashboard:dispute_detail', dispute_id=dispute.id)
+
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)  # admin check
+def analytics(request):
+    # --- Total counts ---
+    total_users = User.objects.count()
+    total_agents = Profile.objects.filter(is_agent=True).count()
+    total_disputes = Dispute.objects.count()
+    total_open_disputes = Dispute.objects.filter(status__in=['pending','under_review']).count()
+    total_deposits = DepositRequest.objects.filter(status='completed').aggregate(Sum('amount'))['amount__sum'] or 0
+    total_withdrawals = WithdrawalRequest.objects.filter(status='completed').aggregate(Sum('amount'))['amount__sum'] or 0
+
+    # --- Last 7 days chart data ---
+    dates = [(now() - timedelta(days=i)).date() for i in reversed(range(7))]
+    deposits_amounts = [
+        DepositRequest.objects.filter(created_at__date=d, status='completed').aggregate(Sum('amount'))['amount__sum'] or 0
+        for d in dates
+    ]
+    withdrawals_amounts = [
+        WithdrawalRequest.objects.filter(created_at__date=d, status='completed').aggregate(Sum('amount'))['amount__sum'] or 0
+        for d in dates
+    ]
+    disputes_counts = [
+        Dispute.objects.filter(created_at__date=d).count()
+        for d in dates
+    ]
+
+    # --- Top 5 agents by deposits processed ---
+    # top_agents = Profile.objects.filter(is_agent=True).annotate(
+    #     total_deposit=Sum('user_deposits__amount', filter=Q(user_deposits__status='completed'))
+    # ).order_by('-total_deposit')[:5]
+
+    context = {
+        'total_users': total_users,
+        'total_agents': total_agents,
+        'total_disputes': total_disputes,
+        'total_open_disputes': total_open_disputes,
+        'total_deposits': total_deposits,
+        'total_withdrawals': total_withdrawals,
+        'dates': [str(d) for d in dates],
+        'deposits_amounts': deposits_amounts,
+        'withdrawals_amounts': withdrawals_amounts,
+        'disputes_counts': disputes_counts,
+        # 'top_agents': top_agents,
+    }
+
+    return render(request, 'admin_dashboard/analytics.html', context)
+
+
+@login_required
+def analytics_chart_data(request):
+    # Last 7 days
+    today = datetime.now().date()
+    dates = [(today - timedelta(days=i)).strftime("%Y-%m-%d") for i in reversed(range(7))]
+
+    deposits_amounts = []
+    withdrawals_amounts = []
+    disputes_counts = []
+
+    for d in dates:
+        deposits_amounts.append(
+            DepositRequest.objects.filter(created_at__date=d).aggregate(total=models.Sum('amount'))['total'] or 0
+        )
+        withdrawals_amounts.append(
+            WithdrawalRequest.objects.filter(created_at__date=d).aggregate(total=models.Sum('amount'))['total'] or 0
+        )
+        disputes_counts.append(
+            Dispute.objects.filter(created_at__date=d).count()
+        )
+
+    return JsonResponse({
+        "dates": dates,
+        "deposits_amounts": deposits_amounts,
+        "withdrawals_amounts": withdrawals_amounts,
+        "disputes_counts": disputes_counts,
+    })
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)  # Only admin can access
+def admin_settings(request):
+    profile = request.user.profile
+
+    if request.method == "POST":
+        # Remove avatar
+        if request.POST.get("remove_avatar"):
+            if profile.avatar:
+                profile.avatar.delete(save=True)
+                messages.success(request, "Avatar removed successfully.")
+            return redirect("admin_dashboard:admin_settings")
+
+        # Update profile info
+        full_name = request.POST.get("full_name", "").strip()
+        email = request.POST.get("email", "").strip()
+        phone = request.POST.get("phone", "").strip()
+        avatar = request.FILES.get("avatar")
+
+        # Update User
+        request.user.first_name = full_name  # Optional: split if you want first/last
+        request.user.email = email
+        request.user.save()
+
+        # Update Profile
+        profile.phone = phone
+        if avatar:
+            profile.avatar = avatar
+        profile.save()
+
+        messages.success(request, "Profile updated successfully!")
+        return redirect("admin_dashboard:admin_settings")
+
+    context = {
+        "user": request.user,
+        "profile": profile
+    }
+    return render(request, "admin_dashboard/admin_settings.html", context)
+
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def system_settings(request):
+    settings_obj, created = SystemSettings.objects.get_or_create(id=1)
+
+    if request.method == "POST":
+        data = request.POST
+        settings_obj.transaction_fee_low = data.get("transaction_fee_low", settings_obj.transaction_fee_low)
+        settings_obj.transaction_fee_high = data.get("transaction_fee_high", settings_obj.transaction_fee_high)
+        settings_obj.split_platform = data.get("split_platform", settings_obj.split_platform)
+        settings_obj.split_agent = data.get("split_agent", settings_obj.split_agent)
+        settings_obj.escrow_expiry_minutes = data.get("escrow_expiry_minutes", settings_obj.escrow_expiry_minutes)
+        settings_obj.min_transaction = data.get("min_transaction", settings_obj.min_transaction)
+        settings_obj.max_transaction = data.get("max_transaction", settings_obj.max_transaction)
+        settings_obj.kyc_required = "kyc_required" in data
+        settings_obj.enable_2fa = "enable_2fa" in data
+        settings_obj.fraud_detection_enabled = "fraud_detection_enabled" in data
+        settings_obj.deposit_enabled = "deposit_enabled" in data
+        settings_obj.withdrawal_enabled = "withdrawal_enabled" in data
+        settings_obj.agent_auto_approval = "agent_auto_approval" in data
+        settings_obj.maintenance_mode = "maintenance_mode" in data
+        settings_obj.log_user_activity = "log_user_activity" in data
+        settings_obj.support_email = data.get("support_email", settings_obj.support_email)
+        settings_obj.support_phone = data.get("support_phone", settings_obj.support_phone)
+        settings_obj.homepage_banner_text = data.get("homepage_banner_text", settings_obj.homepage_banner_text)
+        settings_obj.backup_frequency_hours = data.get("backup_frequency_hours", settings_obj.backup_frequency_hours)
+        settings_obj.save()
+
+        messages.success(request, "System settings updated successfully.")
+        return redirect("admin_dashboard:system_settings")
+
+    return render(request, "admin_dashboard/system_settings.html", {"settings": settings_obj})
