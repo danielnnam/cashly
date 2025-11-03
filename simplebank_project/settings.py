@@ -11,9 +11,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-k5y8b4@4cp*)1ruqcd3q3d6i1i+u*_u8-+pw%zafshwl6tg#a7'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '192.168.203.63']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '192.168.1.101', 'cashly-1-mqhc.onrender.com']
 
 # Application definition
 INSTALLED_APPS = [
@@ -109,6 +109,7 @@ USE_TZ = True
 
 # Static files
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 MEDIA_URL = "/media/"
