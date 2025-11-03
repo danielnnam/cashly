@@ -1,0 +1,106 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Admin Settings{% endblock %}
+
+{% block content %}
+<div class="space-y-8 max-w-4xl mx-auto">
+
+  <!-- Profile Section -->
+  <div class="bg-white rounded-2xl p-6 shadow hover:shadow-lg transition">
+    <h2 class="text-2xl font-semibold mb-6">Profile Information</h2>
+    
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <div class="flex items-center space-x-6 mb-6">
+            <!-- Avatar -->
+            <div class="relative">
+                <div class="w-24 h-24 rounded-full border-2 border-gray-300 overflow-hidden flex items-center justify-center bg-gray-100">
+                    {% if profile.avatar %}
+                        <img src="{{ profile.avatar.url }}" alt="Avatar" class="w-full h-full object-cover">
+                    {% else %}
+                        <!-- Default Blank User SVG -->
+                        <svg class="w-12 h-12 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z"/>
+                        </svg>
+                    {% endif %}
+                </div>
+
+                <!-- File Input Overlay -->
+                <input type="file" name="avatar" class="absolute inset-0 opacity-0 cursor-pointer rounded-full">
+            </div>
+
+            <div class="flex flex-col">
+                <p class="text-gray-500 text-sm mb-1">Click avatar to change</p>
+                
+                {% if profile.avatar %}
+                    <button type="submit" name="remove_avatar" value="1"
+                        class="text-red-600 text-sm hover:underline mt-1">
+                        Remove Avatar
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-gray-600 mb-1">Full Name</label>
+                <input type="text" name="full_name" value="{{ user.get_full_name }}" class="w-full border rounded px-4 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-gray-600 mb-1">Email</label>
+                <input type="email" name="email" value="{{ user.email }}" class="w-full border rounded px-4 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-gray-600 mb-1">Phone Number</label>
+                <input type="text" name="phone" value="{{ profile.phone }}" class="w-full border rounded px-4 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none">
+            </div>
+            <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Save Profile</button>
+        </div>
+    </form>
+</div>
+
+
+  <!-- Security Section -->
+  <div class="bg-white rounded-2xl p-6 shadow hover:shadow-lg transition">
+    <h2 class="text-2xl font-semibold mb-6">Security</h2>
+    <form method="POST">
+      {% csrf_token %}
+      <div class="space-y-4">
+        <div>
+          <label class="block text-gray-600 mb-1">Current Password</label>
+          <input type="password" name="current_password" class="w-full border rounded px-4 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-gray-600 mb-1">New Password</label>
+          <input type="password" name="new_password" class="w-full border rounded px-4 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-gray-600 mb-1">Confirm New Password</label>
+          <input type="password" name="confirm_password" class="w-full border rounded px-4 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none">
+        </div>
+        <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Change Password</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Notifications Section -->
+  <div class="bg-white rounded-2xl p-6 shadow hover:shadow-lg transition">
+    <h2 class="text-2xl font-semibold mb-6">Notifications</h2>
+    <form method="POST">
+      {% csrf_token %}
+      <div class="space-y-4">
+        <label class="flex items-center space-x-3">
+          <input type="checkbox" name="email_notifications" {% if profile.email_notifications %}checked{% endif %} class="h-5 w-5 text-green-600">
+          <span>Email notifications for system alerts</span>
+        </label>
+        <label class="flex items-center space-x-3">
+          <input type="checkbox" name="sms_notifications" {% if profile.sms_notifications %}checked{% endif %} class="h-5 w-5 text-green-600">
+          <span>SMS notifications for transactions</span>
+        </label>
+        <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Save Notification Settings</button>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}
