@@ -17,7 +17,13 @@ class Profile(models.Model):
     is_suspended = models.BooleanField(default=False)
     suspension_reason = models.TextField(blank=True, null=True)
     agent_response = models.TextField(blank=True, null=True)
-    suspension_appeal = models.TextField(blank=True, null=True)  
+    suspension_appeal = models.TextField(blank=True, null=True)
+
+    # Admin-specific settings
+    dark_mode = models.BooleanField(default=False)
+    email_notifications = models.BooleanField(default=True)
+    sms_notifications = models.BooleanField(default=False)
+    default_landing_page = models.CharField(max_length=50, default='dashboard')  
     appeal_status = models.CharField(
         max_length=20,
         choices=[
