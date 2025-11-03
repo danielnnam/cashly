@@ -1,3 +1,4 @@
+{% load custom_tags %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,6 +7,8 @@
     <title>{% block title %}Admin Dashboard - Cashly{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
 
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -75,9 +78,20 @@
 
             <!-- Admin Profile -->
             <div class="p-4 border-b border-border flex items-center space-x-3">
-                <div class="w-12 h-12 bg-gradient-to-r from-primary to-green-600 rounded-full flex items-center justify-center">
-                    <span class="text-white font-semibold text-lg">AD</span>
+                <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-300 flex items-center justify-center bg-gray-100">
+                    {% if profile.avatar %}
+                        <img src="{{ profile.avatar.url }}" alt="Admin Avatar" class="w-full h-full object-cover">
+                    {% else %}
+                        <div class="w-full h-full bg-gradient-to-r from-primary to-green-600 flex items-center justify-center">
+                            <span class="text-white font-semibold text-lg">
+                                {{ request.user.get_full_name|initials }}
+                            </span>
+                        </div>
+                    {% endif %}
                 </div>
+
+
+
                 <div>
                     <p class="font-medium text-dark text-sm">Admin User</p>
                     <p class="text-secondary text-xs">Super Administrator</p>
@@ -123,15 +137,30 @@
                     <span>Transactions</span>
                 </a>
 
-                <a href="{% url 'admin_dashboard:admin_disputes_list' %}" class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group text-secondary hover:bg-gray-50 hover:text-dark">
+                <a href="{% url 'admin_dashboard:admin_disputes_list' %}" class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group 
+                {% if '/admin-dashboard/disputes/' in request.path %}
+                    active-nav
+                {% else %}
+                    text-secondary hover:bg-gray-50 hover:text-dark
+                {% endif %}">
                     <i class="fas fa-exclamation-circle w-6 text-center"></i>
                     <span>Disputes</span>
                 </a>
-                <a href="#" class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group text-secondary hover:bg-gray-50 hover:text-dark">
+                <a href="{% url 'admin_dashboard:analytics' %}" class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group 
+                {% if '/admin-dashboard/analytics/' in request.path %}
+                    active-nav
+                {% else %}
+                    text-secondary hover:bg-gray-50 hover:text-dark
+                {% endif %}">
                     <i class="fas fa-chart-bar w-6 text-center"></i>
                     <span>Analytics</span>
                 </a>
-                <a href="#" class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group text-secondary hover:bg-gray-50 hover:text-dark">
+                <a href="{% url 'admin_dashboard:system_settings' %}" class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group 
+                {% if '/admin-dashboard/system-settings/' in request.path %}
+                    active-nav
+                {% else %}
+                    text-secondary hover:bg-gray-50 hover:text-dark
+                {% endif %}">
                     <i class="fas fa-cog w-6 text-center"></i>
                     <span>System Settings</span>
                 </a>
@@ -140,7 +169,12 @@
 
         <!-- Bottom Navigation -->
         <div class="p-4 border-t border-border space-y-2">
-            <a href="#" class="flex items-center space-x-3 p-3 rounded-lg text-secondary hover:bg-gray-50 hover:text-dark transition-all duration-200 group">
+            <a href="{% url 'admin_dashboard:admin_settings' %}" class="flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group 
+                {% if '/admin-dashboard/settings/' in request.path %}
+                    active-nav
+                {% else %}
+                    text-secondary hover:bg-gray-50 hover:text-dark
+                {% endif %}">
                 <i class="fas fa-user-shield text-gray-500 w-6 text-center"></i>
                 <span>Admin Settings</span>
             </a>
